@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>كلمة مقلوبة — الهوست</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+
+    <!-- Lobby Screen -->
+    <div id="lobby-screen" class="screen active">
+      <div class="game-header">
+        <h1 class="game-title">كلمة مقلوبة</h1>
+        <p class="game-subtitle">لعبة تفاعلية — صفحة الهوست</p>
+      </div>
+
+      <div class="card room-code-display" id="room-code-card" style="display:none">
+        <p class="room-code-label">كود الغرفة</p>
+        <div class="room-code" id="room-code"></div>
+        <button class="copy-btn" id="copy-link-btn">نسخ الرابط</button>
+      </div>
+
+      <div id="pre-room" style="text-align:center;padding:30px">
+        <button class="btn btn-primary" id="create-room-btn" style="max-width:300px">إنشاء غرفة</button>
+      </div>
+
+      <div id="room-settings" style="display:none">
+        <!-- Twitch -->
+        <div class="card">
+          <div class="card-title">تويتش (اختياري)</div>
+          <div id="twitch-connect-area">
+            <div class="twitch-section">
+              <div class="form-group">
+                <label>اسم القناة</label>
+                <input type="text" id="twitch-channel" placeholder="channel_name" dir="ltr">
+              </div>
+              <button class="btn btn-secondary btn-small" id="twitch-connect-btn">اتصال</button>
+            </div>
+          </div>
+          <div id="twitch-status-area" style="display:none">
+            <div class="twitch-status">
+              <span class="twitch-dot"></span>
+              <span>متصل بقناة: <strong id="twitch-channel-name"></strong></span>
+              <button class="btn btn-danger btn-small" id="twitch-disconnect-btn" style="margin-right:auto">قطع</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Players -->
+        <div class="card">
+          <div class="card-title">اللاعبين (<span id="player-count">0</span>)</div>
+          <div class="players-grid" id="players-grid"></div>
+          <p id="no-players" class="waiting-message" style="padding:10px;font-size:0.9rem">بانتظار اللاعبين...</p>
+        </div>
+
+        <!-- Settings -->
+        <div class="card">
+          <div class="card-title">الإعدادات</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>عدد الجولات</label>
+              <select id="setting-rounds">
+                <option value="5">5</option>
+                <option value="10" selected>10</option>
+                <option value="15">15</option>
+                <option value="20">20</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>الصعوبة</label>
+              <select id="setting-difficulty">
+                <option value="easy">سهل</option>
+                <option value="medium">متوسط</option>
+                <option value="hard">صعب</option>
+                <option value="mixed" selected>مختلط</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>وقت الجولة (ثانية)</label>
+            <select id="setting-time">
+              <option value="15">15</option>
+              <option value="20" selected>20</option>
+              <option value="30">30</option>
+              <option value="45">45</option>
+            </select>
+          </div>
+          <div class="toggle-row">
+            <span>التلميح</span>
+            <label class="toggle">
+              <input type="checkbox" id="setting-hint" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="start-game-btn">ابدأ اللعبة</button>
+      </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen">
+      <div class="round-info">
+        <span class="round-number">الجولة <span id="g-round">1</span>/<span id="g-total">10</span></span>
+        <span class="timer" id="g-timer">20</span>
+      </div>
+
+      <div class="reversed-word-container">
+        <div id="g-word-display" class="reversed-word"></div>
+      </div>
+
+      <div class="hint" id="g-hint"></div>
+
+      <div class="winners-list" id="g-winners"></div>
+
+      <div class="card" id="g-scoreboard-card">
+        <div class="card-title">لوحة النقاط</div>
+        <ol class="scoreboard" id="g-scoreboard"></ol>
+      </div>
+    </div>
+
+    <!-- Round End Screen -->
+    <div id="round-end-screen" class="screen">
+      <div class="round-info">
+        <span class="round-number">الجولة <span id="re-round">1</span>/<span id="re-total">10</span> — النتيجة</span>
+      </div>
+
+      <div class="reversed-word-container">
+        <div id="re-word" class="revealed-word"></div>
+      </div>
+
+      <div class="winners-list" id="re-winners"></div>
+
+      <div class="card">
+        <div class="card-title">لوحة النقاط</div>
+        <ol class="scoreboard" id="re-scoreboard"></ol>
+      </div>
+
+      <button class="btn btn-primary" id="next-round-btn">الجولة التالية</button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameover-screen" class="screen">
+      <div class="game-over-title">انتهت اللعبة!</div>
+      <div class="podium" id="go-podium"></div>
+      <div class="card">
+        <div class="card-title">الترتيب النهائي</div>
+        <ol class="scoreboard" id="go-scoreboard"></ol>
+      </div>
+      <button class="btn btn-primary" id="reset-game-btn" style="margin-top:16px">لعبة جديدة</button>
+    </div>
+
+  </div>
+
+  <div class="notification" id="notification"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="sounds.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

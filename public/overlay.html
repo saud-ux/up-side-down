@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>كلمة مقلوبة — أوفرلاي</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { background: transparent !important; overflow: hidden; }
+  </style>
+</head>
+<body class="overlay-page">
+
+  <!-- Join overlay -->
+  <div id="ov-join" style="display:flex;align-items:center;justify-content:center;height:100vh">
+    <div class="card" style="max-width:350px;text-align:center">
+      <h2 style="margin-bottom:16px;color:var(--orange)">أوفرلاي OBS</h2>
+      <div class="form-group">
+        <label>كود الغرفة</label>
+        <input type="text" id="ov-code" maxlength="4" placeholder="0000" dir="ltr"
+               style="text-align:center;font-size:1.8rem;letter-spacing:8px;font-weight:900">
+      </div>
+      <button class="btn btn-primary" id="ov-join-btn">اتصال</button>
+    </div>
+  </div>
+
+  <!-- Main overlay -->
+  <div id="ov-main" class="overlay-container" style="display:none">
+    <div class="overlay-round" id="ov-round"></div>
+
+    <div class="overlay-timer-ring" id="ov-timer-ring">
+      <svg width="70" height="70" viewBox="0 0 70 70">
+        <circle class="track" cx="35" cy="35" r="30"/>
+        <circle class="progress" id="ov-timer-circle" cx="35" cy="35" r="30"
+                stroke-dasharray="188.5" stroke-dashoffset="0"/>
+      </svg>
+      <span class="overlay-timer-text" id="ov-timer-text"></span>
+    </div>
+
+    <div id="ov-word" class="overlay-word"></div>
+
+    <div class="overlay-hint" id="ov-hint"></div>
+
+    <div class="overlay-winners" id="ov-winners"></div>
+
+    <div class="overlay-scoreboard" id="ov-scoreboard-panel">
+      <h3>النقاط</h3>
+      <div id="ov-scores"></div>
+    </div>
+
+    <!-- Game Over overlay -->
+    <div id="ov-gameover" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.7);display:none;flex-direction:column;align-items:center;justify-content:center">
+      <div class="game-over-title" style="font-size:3rem;margin-bottom:20px">انتهت اللعبة!</div>
+      <div class="podium" id="ov-podium"></div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="sounds.js"></script>
+  <script src="overlay.js"></script>
+</body>
+</html>
