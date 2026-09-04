@@ -95,6 +95,11 @@
         <div class="form-group">
           <input type="text" id="setup-emojis" placeholder="اكتب أو الصق الإيموجيات هنا" dir="ltr"
                  style="font-size:2rem;text-align:center;padding:16px">
+          <div class="emoji-palette" id="emoji-palette"></div>
+          <div class="emoji-palette-actions">
+            <button type="button" class="btn btn-small emoji-tool-btn" id="emoji-backspace">⌫ حذف</button>
+            <button type="button" class="btn btn-small emoji-tool-btn" id="emoji-clear">مسح الكل</button>
+          </div>
         </div>
 
         <div class="card-title">الجواب الصحيح (مخفي عن اللاعبين)</div>
@@ -125,6 +130,8 @@
         <span class="timer" id="g-timer">30</span>
       </div>
 
+      <div class="answer-hint" id="g-answer-hint"></div>
+
       <div class="category-display" id="g-category"></div>
 
       <div class="emoji-display-container">
@@ -147,6 +154,8 @@
         <div id="g-guesses" class="guesses-feed"></div>
         <p id="g-no-guesses" class="waiting-message" style="padding:8px;font-size:0.85rem">بانتظار المحاولات...</p>
       </div>
+
+      <button class="btn btn-danger" id="end-round-btn" style="width:100%">إنهاء الجولة الآن</button>
     </div>
 
     <!-- Round End Screen -->
@@ -185,8 +194,15 @@
 
   <div class="notification" id="notification"></div>
 
+  <div class="countdown-overlay" id="countdown-overlay">
+    <div class="countdown-category" id="countdown-category"></div>
+    <div class="countdown-number" id="countdown-number">3</div>
+    <div class="countdown-label">استعدوا!</div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="sounds.js"></script>
+  <script src="effects.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

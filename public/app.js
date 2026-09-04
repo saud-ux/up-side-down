@@ -13,17 +13,23 @@ const SUGGESTIONS = [
   { emojis: '🚗⚡🏁', answer: 'سيارات, كارز, cars', category: 'فيلم' },
   { emojis: '🤖🌍🌱', answer: 'وول إي, wall-e, والي', category: 'فيلم' },
   { emojis: '👻👀🏚️', answer: 'بيت أشباح, haunted house', category: 'فيلم' },
+  { emojis: '💍🌋🧙', answer: 'سيد الخواتم, lord of the rings', category: 'فيلم' },
+  { emojis: '🦖🌴🧬', answer: 'الحديقة الجوراسية, jurassic park', category: 'فيلم' },
   { emojis: '🐭🧀🐱', answer: 'توم وجيري, tom and jerry', category: 'كرتون' },
   { emojis: '🧽🌊🍍', answer: 'سبونج بوب, spongebob', category: 'كرتون' },
+  { emojis: '🐼🥋🍜', answer: 'كونغ فو باندا, kung fu panda', category: 'كرتون' },
   { emojis: '☕🍵🫖', answer: 'شاي, tea', category: 'مشروب' },
   { emojis: '🍕🧀🔥', answer: 'بيتزا, pizza', category: 'أكل' },
   { emojis: '🍔🥩🍞', answer: 'برجر, burger, hamburger', category: 'أكل' },
   { emojis: '🍚🍛🥘', answer: 'كبسة, kabsa', category: 'أكل' },
   { emojis: '🧇🍯🥞', answer: 'وافل, waffle', category: 'أكل' },
   { emojis: '🍦🥛🍫', answer: 'آيسكريم, ايسكريم, ice cream', category: 'أكل' },
+  { emojis: '🌯🥙🧆', answer: 'شاورما, shawarma', category: 'أكل' },
+  { emojis: '🍩🍬🍭', answer: 'حلويات, حلا, candy', category: 'أكل' },
   { emojis: '🏜️🐪☀️', answer: 'صحراء, desert', category: 'مكان' },
   { emojis: '🎓📚🏫', answer: 'مدرسة, school', category: 'مكان' },
   { emojis: '⚽🏟️🏆', answer: 'كرة قدم, كورة, football, soccer', category: 'رياضة' },
+  { emojis: '🏀🏀🔥', answer: 'كرة سلة, basketball', category: 'رياضة' },
   { emojis: '🌙⭐🕌', answer: 'رمضان, ramadan', category: 'مناسبة' },
   { emojis: '✈️🧳🌍', answer: 'سفر, travel', category: 'نشاط' },
   { emojis: '🎮🕹️👾', answer: 'ألعاب فيديو, قيمز, gaming, video games', category: 'نشاط' },
@@ -39,14 +45,24 @@ const SUGGESTIONS = [
   { emojis: '🏥💉👨‍⚕️', answer: 'مستشفى, hospital', category: 'مكان' },
   { emojis: '📸🖼️🎨', answer: 'تصوير, فن, photography, art', category: 'نشاط' },
   { emojis: '🥐🧈☕', answer: 'كرواسون, croissant, فطور', category: 'أكل' },
+  { emojis: '🌧️☂️🌂', answer: 'مطر, شتاء, rain', category: 'فصل' },
+  { emojis: '🚀🌙🪐', answer: 'فضاء, space', category: 'موضوع' },
+  { emojis: '🦈🌊😱', answer: 'قرش, shark', category: 'حيوان' },
+  { emojis: '🐝🍯🌼', answer: 'نحل, عسل, bee', category: 'حيوان' },
+  { emojis: '🕰️⏰⌛', answer: 'وقت, time', category: 'موضوع' },
+  { emojis: '💰💵🤑', answer: 'فلوس, مال, money', category: 'موضوع' },
+  { emojis: '🌈🦄✨', answer: 'قوس قزح, rainbow', category: 'موضوع' },
+  { emojis: '🍿🎬🎟️', answer: 'سينما, cinema, movies', category: 'مكان' }
 ];
 
-const CATEGORY_ICONS = {
-  'فيلم': '🎬', 'كرتون': '📺', 'مشروب': '☕', 'أكل': '🍽️',
-  'مكان': '📍', 'رياضة': '⚽', 'مناسبة': '🎉', 'نشاط': '🎯',
-  'موضوع': '💡', 'شخصية': '👤', 'حيوان': '🐾', 'أغنية': '🎵',
-  'فصل': '🌿', 'صحة': '🏥'
-};
+// ─── Emoji Palette ───
+
+const PALETTE = [
+  '😀','😂','😍','😎','🥳','😱','🤔','😴','😭','😡','👍','👎','👏','🙏','💪','👀','👑','🧠','❤️','🔥',
+  '⭐','✨','🎉','🎈','🎁','🏆','🥇','💰','💎','🎵','🎬','🎮','📱','💻','📚','✈️','🚗','🚀','🏠','🏫',
+  '🌍','🌙','☀️','⚡','🌊','🌈','🏜️','🏖️','⚽','🏀','🎾','🐶','🐱','🦁','🐼','🦈','🐝','🦋','🌹','🌸',
+  '🍕','🍔','🍟','🌮','🍦','🍩','🍰','☕','🍵','🍎'
+];
 
 // ─── DOM refs ───
 
@@ -72,39 +88,16 @@ function notify(msg, type = '') {
 
 const MEDALS = ['🥇','🥈','🥉'];
 
-// ─── Emoji Helpers ───
-
-function splitEmojis(str) {
-  const trimmed = str.trim();
-  if (!trimmed) return [];
-  if (trimmed.includes(' ')) {
-    return trimmed.split(/\s+/).filter(Boolean);
-  }
-  if (typeof Intl !== 'undefined' && Intl.Segmenter) {
-    const seg = new Intl.Segmenter('en', { granularity: 'grapheme' });
-    return [...seg.segment(trimmed)].map(s => s.segment).filter(s => s.trim());
-  }
-  return [trimmed];
-}
-
-function renderEmojiBoxes(container, emojis, cssClass) {
-  container.innerHTML = '';
-  const parts = splitEmojis(emojis);
-  parts.forEach(e => {
-    const box = document.createElement('span');
-    box.className = 'emoji-char' + (cssClass ? ' ' + cssClass : '');
-    box.textContent = e;
-    container.appendChild(box);
-  });
-}
-
-// ─── Lobby ───
+// ─── State ───
 
 let roomCode = null;
 let currentRound = 0, totalRounds = 0, duration = 0;
 let totalAttempts = 0, correctCount = 0;
 let usedSuggestions = new Set();
 let suggestionsVisible = 10;
+let currentAnswer = '';
+
+// ─── Lobby ───
 
 document.getElementById('create-room-btn').addEventListener('click', () => {
   socket.emit('create-room');
@@ -116,6 +109,7 @@ socket.on('room-created', (data) => {
   document.getElementById('room-code-card').style.display = '';
   document.getElementById('pre-room').style.display = 'none';
   document.getElementById('room-settings').style.display = '';
+  buildPalette();
   SoundFX.join();
 });
 
@@ -129,7 +123,6 @@ document.getElementById('copy-link-btn').addEventListener('click', () => {
   });
 });
 
-// Settings
 ['setting-rounds','setting-time'].forEach(id => {
   document.getElementById(id).addEventListener('change', sendSettings);
 });
@@ -174,7 +167,7 @@ socket.on('player-joined', ({ name, type, playerCount }) => {
   renderPlayerChip(name, type);
   document.getElementById('no-players').style.display = playerCount > 0 ? 'none' : '';
   SoundFX.join();
-  notify(name + ' انضم', 'success');
+  notify(escapeHTML(name) + ' انضم', 'success');
 });
 
 socket.on('player-left', ({ name, playerCount }) => {
@@ -185,16 +178,21 @@ socket.on('player-left', ({ name, playerCount }) => {
 
 function renderPlayerChip(name, type) {
   const grid = document.getElementById('players-grid');
+  if (grid.querySelector(`[data-name="${CSS.escape(name)}"]`)) return;
   const chip = document.createElement('span');
   chip.className = 'player-chip';
   chip.dataset.name = name;
-  chip.innerHTML = '<span class="icon">' + (type === 'twitch' ? '🟣' : '🌐') + '</span>' + name;
+  const icon = document.createElement('span');
+  icon.className = 'icon';
+  icon.textContent = type === 'twitch' ? '🟣' : '🌐';
+  chip.appendChild(icon);
+  chip.appendChild(document.createTextNode(name));
   grid.appendChild(chip);
 }
 
 function removePlayerChip(name) {
   const grid = document.getElementById('players-grid');
-  const chip = grid.querySelector(`[data-name="${name}"]`);
+  const chip = grid.querySelector(`[data-name="${CSS.escape(name)}"]`);
   if (chip) chip.remove();
 }
 
@@ -205,6 +203,39 @@ document.getElementById('start-game-btn').addEventListener('click', () => {
   currentRound = 0;
   usedSuggestions.clear();
   goToSetup();
+});
+
+// ─── Emoji Palette ───
+
+function buildPalette() {
+  const pal = document.getElementById('emoji-palette');
+  if (pal.childElementCount) return;
+  PALETTE.forEach(e => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'palette-emoji';
+    btn.textContent = e;
+    btn.addEventListener('click', () => {
+      const input = document.getElementById('setup-emojis');
+      input.value += e;
+      input.focus();
+    });
+    pal.appendChild(btn);
+  });
+}
+
+document.getElementById('emoji-backspace').addEventListener('click', () => {
+  const input = document.getElementById('setup-emojis');
+  const parts = splitEmojis(input.value);
+  parts.pop();
+  input.value = parts.join('');
+  input.focus();
+});
+
+document.getElementById('emoji-clear').addEventListener('click', () => {
+  const input = document.getElementById('setup-emojis');
+  input.value = '';
+  input.focus();
 });
 
 // ─── Round Setup ───
@@ -231,11 +262,10 @@ function renderSuggestions() {
     const idx = SUGGESTIONS.indexOf(s);
     const row = document.createElement('div');
     row.className = 'suggestion-row';
-    const icon = CATEGORY_ICONS[s.category] || '🏷️';
     row.innerHTML = `
-      <span class="suggestion-emojis">${s.emojis}</span>
-      <span class="suggestion-answer">${s.answer.split(',')[0].trim()}</span>
-      <span class="suggestion-category">${icon} ${s.category}</span>
+      <span class="suggestion-emojis">${escapeHTML(s.emojis)}</span>
+      <span class="suggestion-answer">${escapeHTML(s.answer.split(',')[0].trim())}</span>
+      <span class="suggestion-category">${escapeHTML(categoryLabel(s.category))}</span>
       <button class="btn btn-secondary btn-small suggestion-use-btn" data-idx="${idx}">استخدم</button>
     `;
     list.appendChild(row);
@@ -267,22 +297,45 @@ document.getElementById('start-round-btn').addEventListener('click', () => {
   const answerStr = document.getElementById('setup-answer').value.trim();
   const category = document.getElementById('setup-category').value.trim();
 
-  if (!emojis) {
-    notify('أدخل الإيموجيات', 'error');
-    return;
-  }
-  if (!answerStr) {
-    notify('أدخل الجواب الصحيح', 'error');
-    return;
-  }
+  if (!emojis) { notify('أدخل الإيموجيات', 'error'); return; }
+  if (!answerStr) { notify('أدخل الجواب الصحيح', 'error'); return; }
 
   const answers = answerStr.split(',').map(a => a.trim()).filter(Boolean);
+  currentAnswer = answers[0];
   socket.emit('start-round', { emojis, answers, category });
 });
+
+// ─── Countdown ───
+
+socket.on('round-countdown', ({ roundNumber, totalRounds: tr, category, count }) => {
+  totalRounds = tr;
+  const overlay = document.getElementById('countdown-overlay');
+  const catEl = document.getElementById('countdown-category');
+  catEl.textContent = category ? categoryLabel(category) : '';
+  document.getElementById('countdown-number').textContent = count;
+  overlay.classList.add('show');
+  bumpCountdown();
+  SoundFX.tick();
+});
+
+socket.on('countdown-tick', ({ count }) => {
+  document.getElementById('countdown-number').textContent = count;
+  bumpCountdown();
+  SoundFX.tick();
+});
+
+function bumpCountdown() {
+  const num = document.getElementById('countdown-number');
+  num.classList.remove('pop');
+  void num.offsetWidth;
+  num.classList.add('pop');
+}
 
 // ─── Game ───
 
 socket.on('round-started', (data) => {
+  document.getElementById('countdown-overlay').classList.remove('show');
+
   currentRound = data.roundNumber;
   totalRounds = data.totalRounds;
   duration = data.duration;
@@ -298,10 +351,11 @@ socket.on('round-started', (data) => {
 
   renderEmojiBoxes(document.getElementById('g-emojis'), data.emojis);
 
+  document.getElementById('g-answer-hint').textContent = currentAnswer ? '🔑 ' + currentAnswer : '';
+
   const catEl = document.getElementById('g-category');
   if (data.category) {
-    const icon = CATEGORY_ICONS[data.category] || '🏷️';
-    catEl.textContent = icon + ' ' + data.category;
+    catEl.textContent = categoryLabel(data.category);
     catEl.style.display = '';
   } else {
     catEl.style.display = 'none';
@@ -310,9 +364,9 @@ socket.on('round-started', (data) => {
   document.getElementById('g-attempts').textContent = '0';
   document.getElementById('g-correct').textContent = '0';
 
-  document.getElementById('medal-1').querySelector('.medal-name').textContent = '—';
-  document.getElementById('medal-2').querySelector('.medal-name').textContent = '—';
-  document.getElementById('medal-3').querySelector('.medal-name').textContent = '—';
+  ['medal-1','medal-2','medal-3'].forEach(id => {
+    document.getElementById(id).querySelector('.medal-name').textContent = '—';
+  });
   document.querySelectorAll('.medal-slot').forEach(s => s.classList.remove('won'));
 
   document.getElementById('g-guesses').innerHTML = '';
@@ -336,13 +390,12 @@ socket.on('guess-attempt', ({ playerName, guess }) => {
   const feed = document.getElementById('g-guesses');
   const item = document.createElement('div');
   item.className = 'guess-item wrong';
-  item.innerHTML = `<span class="guess-name">${playerName}:</span> <span class="guess-text">"${guess}"</span> ❌`;
+  item.innerHTML = `<span class="guess-name">${escapeHTML(playerName)}:</span> <span class="guess-text">"${escapeHTML(guess)}"</span> ❌`;
   feed.prepend(item);
-
   if (feed.children.length > 8) feed.lastChild.remove();
 });
 
-socket.on('correct-answer', ({ playerName, rank, points, timeElapsed }) => {
+socket.on('correct-answer', ({ playerName, rank, points }) => {
   SoundFX.correct();
   totalAttempts++;
   correctCount++;
@@ -352,6 +405,10 @@ socket.on('correct-answer', ({ playerName, rank, points, timeElapsed }) => {
   const slot = document.getElementById('medal-' + rank);
   slot.querySelector('.medal-name').textContent = playerName + ' (+' + points + ')';
   slot.classList.add('won');
+});
+
+document.getElementById('end-round-btn').addEventListener('click', () => {
+  socket.emit('end-round');
 });
 
 // ─── Round End ───
@@ -375,7 +432,7 @@ socket.on('round-ended', ({ emojis, answer, winners, scores }) => {
     if (w) {
       item.innerHTML = `
         <span class="medal">${MEDALS[i]}</span>
-        <span class="name">${w.playerName}</span>
+        <span class="name">${escapeHTML(w.playerName)}</span>
         <span class="points">+${w.points}</span>
         <span class="time">${w.timeElapsed} ث</span>
       `;
@@ -386,7 +443,6 @@ socket.on('round-ended', ({ emojis, answer, winners, scores }) => {
   }
 
   renderScoreboard('re-scoreboard', scores);
-
   document.getElementById('next-round-btn').style.display = currentRound >= totalRounds ? 'none' : '';
 });
 
@@ -399,6 +455,7 @@ document.getElementById('next-round-btn').addEventListener('click', () => {
 socket.on('game-over', ({ finalScores }) => {
   SoundFX.gameOver();
   showScreen('gameOver');
+  if (finalScores.length) launchConfetti();
 
   const podium = document.getElementById('go-podium');
   podium.innerHTML = '';
@@ -407,7 +464,7 @@ socket.on('game-over', ({ finalScores }) => {
     item.className = 'podium-item';
     item.innerHTML = `
       <div class="podium-medal">${MEDALS[i]}</div>
-      <div class="podium-name">${p.name}</div>
+      <div class="podium-name">${escapeHTML(p.name)}</div>
       <div class="podium-score">${p.score}</div>
     `;
     podium.appendChild(item);
@@ -428,8 +485,6 @@ socket.on('game-reset', () => {
   usedSuggestions.clear();
 });
 
-// ─── Room closed ───
-
 socket.on('room-closed', () => {
   notify('الغرفة اتقفلت', 'error');
 });
@@ -443,7 +498,7 @@ function renderScoreboard(id, scores) {
     const li = document.createElement('li');
     li.innerHTML = `
       <span class="score-rank">${i + 1}</span>
-      <span class="score-name"><span class="score-type">${p.type === 'twitch' ? '🟣' : '🌐'}</span>${p.name}</span>
+      <span class="score-name"><span class="score-type">${p.type === 'twitch' ? '🟣' : '🌐'}</span>${escapeHTML(p.name)}</span>
       <span class="score-value">${p.score}</span>
     `;
     ol.appendChild(li);

@@ -9,6 +9,12 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
+// ─── Config ───
+
+const MIN_GUESS_INTERVAL = 250;   // ms between guesses per player
+const MAX_GUESSES_PER_ROUND = 40; // anti-spam cap per player per round
+const COUNTDOWN_SECONDS = 3;
+
 // ─── Utilities ───
 
 function normalizeArabic(text) {
@@ -18,12 +24,14 @@ function normalizeArabic(text) {
   n = n.replace(/ة/g, 'ه');
   n = n.replace(/ى/g, 'ي');
   n = n.replace(/^ال/, '');
+  n = n.replace(/\s+/g, ' ');
   n = n.toLowerCase();
   return n;
 }
 
 function isCorrectAnswer(guess, acceptedAnswers) {
   const normalizedGuess = normalizeArabic(guess);
+  if (!normalizedGuess) return false;
   return acceptedAnswers.some(ans => normalizeArabic(ans) === normalizedGuess);
 }
 
@@ -33,6 +41,10 @@ function generateRoomCode() {
     code = String(Math.floor(1000 + Math.random() * 9000));
   } while (rooms[code]);
   return code;
+}
+
+function sanitizeName(name) {
+  return String(name || '').trim().slice(0, 20);
 }
 
 // ─── Room Management ───
@@ -50,9 +62,14 @@ function getScoreboard(room) {
     .sort((a, b) => b.score - a.score);
 }
 
+function clearRoomTimers(room) {
+  if (room.timer) { clearInterval(room.timer); room.timer = null; }
+  if (room.countdownTimer) { clearInterval(room.countdownTimer); room.countdownTimer = null; }
+}
+
 function endRound(room) {
   if (room.state !== 'playing') return;
-  if (room.timer) { clearInterval(room.timer); room.timer = null; }
+  clearRoomTimers(room);
 
   const isLastRound = room.currentRound >= room.settings.rounds;
   room.state = isLastRound ? 'gameOver' : 'roundEnd';
@@ -74,6 +91,33 @@ function endRound(room) {
 }
 
 function startRound(room, { emojis, answers, category }) {
+  clearRoomTimers(room);
+  room.pendingRound = { emojis, answers, category: category || '' };
+  room.state = 'countdown';
+
+  const roundNumber = room.currentRound + 1;
+  io.to(room.code).emit('round-countdown', {
+    roundNumber,
+    totalRounds: room.settings.rounds,
+    category: category || '',
+    count: COUNTDOWN_SECONDS
+  });
+
+  let count = COUNTDOWN_SECONDS;
+  room.countdownTimer = setInterval(() => {
+    count--;
+    if (count > 0) {
+      io.to(room.code).emit('countdown-tick', { count });
+    } else {
+      clearInterval(room.countdownTimer);
+      room.countdownTimer = null;
+      beginRound(room);
+    }
+  }, 1000);
+}
+
+function beginRound(room) {
+  const { emojis, answers, category } = room.pendingRound;
   room.currentRound++;
   room.state = 'playing';
   room.roundWinners = [];
@@ -85,20 +129,22 @@ function startRound(room, { emojis, answers, category }) {
   room.roundStartTime = Date.now();
   room.remaining = room.settings.roundTime;
 
-  const data = {
+  Object.values(room.players).forEach(p => {
+    p.roundGuesses = 0;
+    p.lastGuessTime = 0;
+  });
+
+  io.to(room.code).emit('round-started', {
     roundNumber: room.currentRound,
     totalRounds: room.settings.rounds,
     emojis,
     category: category || '',
     duration: room.settings.roundTime
-  };
-
-  io.to(room.code).emit('round-started', data);
+  });
 
   room.timer = setInterval(() => {
     room.remaining--;
     io.to(room.code).emit('timer-tick', { remaining: room.remaining });
-
     if (room.remaining <= 0) {
       endRound(room);
     }
@@ -108,20 +154,31 @@ function startRound(room, { emojis, answers, category }) {
 function processGuess(room, playerId, guess) {
   if (room.state !== 'playing') return;
 
+  const player = room.players[playerId];
+  if (!player) return;
+
   const alreadyWon = room.roundWinners.some(w => w.playerId === playerId);
   if (alreadyWon) return;
 
+  // Anti-spam: rate limit + per-round cap
+  const now = Date.now();
+  if (now - (player.lastGuessTime || 0) < MIN_GUESS_INTERVAL) return;
+  if ((player.roundGuesses || 0) >= MAX_GUESSES_PER_ROUND) return;
+  player.lastGuessTime = now;
+  player.roundGuesses = (player.roundGuesses || 0) + 1;
+
+  const trimmed = String(guess || '').trim();
+  if (!trimmed) return;
+
   room.totalAttempts++;
 
-  if (isCorrectAnswer(guess, room.currentAnswers)) {
+  if (isCorrectAnswer(trimmed, room.currentAnswers)) {
     if (room.roundWinners.length >= 3) return;
 
     const rank = room.roundWinners.length + 1;
     const points = 4 - rank;
-    const elapsed = Math.round((Date.now() - room.roundStartTime) / 1000);
+    const elapsed = Math.round((now - room.roundStartTime) / 1000);
 
-    const player = room.players[playerId];
-    if (!player) return;
     player.score += points;
 
     room.roundWinners.push({
@@ -143,17 +200,13 @@ function processGuess(room, playerId, guess) {
       setTimeout(() => endRound(room), 1500);
     }
   } else {
-    const player = room.players[playerId];
-    if (!player) return;
-
     if (player.socketId) {
-      io.to(player.socketId).emit('wrong-guess', { guess });
+      io.to(player.socketId).emit('wrong-guess', { guess: trimmed });
     }
-
     if (room.hostSocket) {
       io.to(room.hostSocket).emit('guess-attempt', {
         playerName: player.name,
-        guess
+        guess: trimmed
       });
     }
   }
@@ -194,7 +247,9 @@ function connectTwitch(room, channel) {
           name: username,
           type: 'twitch',
           score: 0,
-          socketId: null
+          socketId: null,
+          roundGuesses: 0,
+          lastGuessTime: 0
         };
         io.to(room.code).emit('player-joined', {
           name: username,
@@ -245,6 +300,7 @@ io.on('connection', (socket) => {
       code,
       hostSocket: socket.id,
       players: {},
+      scoreMemory: {},
       settings: {
         rounds: 10,
         roundTime: 30
@@ -254,9 +310,11 @@ io.on('connection', (socket) => {
       currentEmojis: '',
       currentAnswers: [],
       currentCategory: '',
+      pendingRound: null,
       roundWinners: [],
       totalAttempts: 0,
       timer: null,
+      countdownTimer: null,
       remaining: 0,
       roundStartTime: 0,
       twitchClient: null,
@@ -272,7 +330,10 @@ io.on('connection', (socket) => {
     const code = socketToRoom[socket.id];
     const room = rooms[code];
     if (!room || room.hostSocket !== socket.id) return;
-    Object.assign(room.settings, data);
+    const clean = {};
+    if (Number.isFinite(data.rounds)) clean.rounds = Math.max(1, Math.min(50, data.rounds));
+    if (Number.isFinite(data.roundTime)) clean.roundTime = Math.max(5, Math.min(300, data.roundTime));
+    Object.assign(room.settings, clean);
     io.to(code).emit('settings-updated', room.settings);
   });
 
@@ -280,8 +341,26 @@ io.on('connection', (socket) => {
     const code = socketToRoom[socket.id];
     const room = rooms[code];
     if (!room || room.hostSocket !== socket.id) return;
-    if (room.state === 'lobby' || room.state === 'roundEnd') {
-      startRound(room, { emojis, answers, category });
+    if (room.state !== 'lobby' && room.state !== 'roundEnd') return;
+
+    const cleanEmojis = String(emojis || '').trim().slice(0, 100);
+    const cleanAnswers = (Array.isArray(answers) ? answers : [])
+      .map(a => String(a || '').trim())
+      .filter(Boolean)
+      .slice(0, 20);
+    const cleanCategory = String(category || '').trim().slice(0, 30);
+
+    if (!cleanEmojis || cleanAnswers.length === 0) return;
+
+    startRound(room, { emojis: cleanEmojis, answers: cleanAnswers, category: cleanCategory });
+  });
+
+  socket.on('end-round', () => {
+    const code = socketToRoom[socket.id];
+    const room = rooms[code];
+    if (!room || room.hostSocket !== socket.id) return;
+    if (room.state === 'playing') {
+      endRound(room);
     }
   });
 
@@ -289,15 +368,17 @@ io.on('connection', (socket) => {
     const code = socketToRoom[socket.id];
     const room = rooms[code];
     if (!room || room.hostSocket !== socket.id) return;
-    if (room.timer) { clearInterval(room.timer); room.timer = null; }
+    clearRoomTimers(room);
     room.state = 'lobby';
     room.currentRound = 0;
     room.currentEmojis = '';
     room.currentAnswers = [];
     room.currentCategory = '';
+    room.pendingRound = null;
     room.roundWinners = [];
     room.totalAttempts = 0;
-    Object.values(room.players).forEach(p => p.score = 0);
+    room.scoreMemory = {};
+    Object.values(room.players).forEach(p => { p.score = 0; });
     io.to(code).emit('game-reset', { scores: getScoreboard(room) });
   });
 
@@ -305,7 +386,9 @@ io.on('connection', (socket) => {
     const code = socketToRoom[socket.id];
     const room = rooms[code];
     if (!room || room.hostSocket !== socket.id) return;
-    connectTwitch(room, channel);
+    const clean = String(channel || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 25);
+    if (!clean) return;
+    connectTwitch(room, clean);
   });
 
   socket.on('disconnect-twitch', () => {
@@ -322,13 +405,28 @@ io.on('connection', (socket) => {
       return;
     }
 
+    const name = sanitizeName(playerName);
+    if (!name) {
+      socket.emit('join-error', { message: 'أدخل اسمك' });
+      return;
+    }
+
     const playerId = socket.id;
+    // Reconnection: restore score if this name was in the room before
+    let startScore = 0;
+    if (Object.prototype.hasOwnProperty.call(room.scoreMemory, name)) {
+      startScore = room.scoreMemory[name];
+      delete room.scoreMemory[name];
+    }
+
     room.players[playerId] = {
       id: playerId,
-      name: playerName,
+      name,
       type: 'web',
-      score: 0,
-      socketId: socket.id
+      score: startScore,
+      socketId: socket.id,
+      roundGuesses: 0,
+      lastGuessTime: 0
     };
 
     socketToRoom[socket.id] = roomCode;
@@ -342,7 +440,7 @@ io.on('connection', (socket) => {
     });
 
     io.to(roomCode).emit('player-joined', {
-      name: playerName,
+      name,
       type: 'web',
       playerCount: getPlayerCount(room)
     });
@@ -395,7 +493,7 @@ io.on('connection', (socket) => {
     if (!room) return;
 
     if (room.hostSocket === socket.id) {
-      if (room.timer) clearInterval(room.timer);
+      clearRoomTimers(room);
       disconnectTwitch(room);
       io.to(code).emit('room-closed');
       Object.keys(room.players).forEach(id => {
@@ -408,10 +506,12 @@ io.on('connection', (socket) => {
     } else if (room.overlays.has(socket.id)) {
       room.overlays.delete(socket.id);
     } else if (room.players[socket.id]) {
-      const name = room.players[socket.id].name;
+      const player = room.players[socket.id];
+      // Remember score so the player can reclaim it by rejoining with the same name
+      room.scoreMemory[player.name] = player.score;
       delete room.players[socket.id];
       io.to(code).emit('player-left', {
-        name,
+        name: player.name,
         playerCount: getPlayerCount(room)
       });
     }
