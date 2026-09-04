@@ -2,9 +2,21 @@ const socket = io();
 
 const MEDALS = ['🥇','🥈','🥉'];
 
-let totalDuration = 20;
+let totalDuration = 30;
 let roomCode = null;
 const CIRCUMFERENCE = 2 * Math.PI * 30;
+
+// ─── Overlay emoji rendering (larger boxes) ───
+
+function renderOverlayEmojis(container, emojis) {
+  container.innerHTML = '';
+  splitEmojis(emojis).forEach(e => {
+    const span = document.createElement('span');
+    span.className = 'ov-emoji-char';
+    span.textContent = e;
+    container.appendChild(span);
+  });
+}
 
 // ─── Auto-fill from URL ───
 
@@ -36,20 +48,52 @@ socket.on('joined-overlay', ({ settings, state, scores }) => {
   if (scores) renderScores(scores);
 });
 
+// ─── Countdown ───
+
+socket.on('round-countdown', ({ roundNumber, totalRounds, category, count }) => {
+  document.getElementById('ov-round').textContent = 'الجولة ' + roundNumber + '/' + totalRounds;
+  const overlay = document.getElementById('countdown-overlay');
+  document.getElementById('countdown-category').textContent = category ? categoryLabel(category) : '';
+  document.getElementById('countdown-number').textContent = count;
+  overlay.classList.add('show');
+  bumpCountdown();
+  SoundFX.tick();
+});
+
+socket.on('countdown-tick', ({ count }) => {
+  document.getElementById('countdown-number').textContent = count;
+  bumpCountdown();
+  SoundFX.tick();
+});
+
+function bumpCountdown() {
+  const num = document.getElementById('countdown-number');
+  num.classList.remove('pop');
+  void num.offsetWidth;
+  num.classList.add('pop');
+}
+
 // ─── Round Start ───
 
 socket.on('round-started', (data) => {
+  document.getElementById('countdown-overlay').classList.remove('show');
   totalDuration = data.duration;
 
   document.getElementById('ov-round').textContent =
     'الجولة ' + data.roundNumber + '/' + data.totalRounds;
 
-  const wordEl = document.getElementById('ov-word');
-  wordEl.textContent = data.word;
-  wordEl.className = 'overlay-word';
+  renderOverlayEmojis(document.getElementById('ov-emojis'), data.emojis);
 
-  document.getElementById('ov-hint').textContent = '';
-  document.getElementById('ov-hint').classList.remove('visible');
+  const catEl = document.getElementById('ov-category');
+  if (data.category) {
+    catEl.textContent = categoryLabel(data.category);
+    catEl.style.display = '';
+  } else {
+    catEl.style.display = 'none';
+  }
+
+  document.getElementById('ov-answer').textContent = '';
+  document.getElementById('ov-answer').classList.remove('visible');
   document.getElementById('ov-winners').innerHTML = '';
 
   document.getElementById('ov-timer-text').textContent = data.duration;
@@ -86,35 +130,24 @@ function resetTimerRing() {
   circle.style.stroke = 'var(--accent)';
 }
 
-// ─── Hint ───
-
-socket.on('hint-revealed', ({ firstLetter }) => {
-  const hint = document.getElementById('ov-hint');
-  hint.textContent = '💡 الحرف الأول: ' + firstLetter;
-  hint.classList.add('visible');
-  SoundFX.hint();
-});
-
 // ─── Correct Answer ───
 
-socket.on('correct-answer', ({ playerName, rank, points, timeElapsed }) => {
+socket.on('correct-answer', ({ playerName, rank, points }) => {
   SoundFX.correct();
   const winners = document.getElementById('ov-winners');
   const item = document.createElement('div');
   item.className = 'overlay-winner';
-  item.innerHTML = `<span>${MEDALS[rank - 1]}</span><span>${playerName}</span><span style="color:var(--green)">+${points}</span>`;
+  item.innerHTML = `<span>${MEDALS[rank - 1]}</span><span>${escapeHTML(playerName)}</span><span style="color:var(--green)">+${points}</span>`;
   winners.appendChild(item);
 });
 
 // ─── Round End ───
 
-socket.on('round-ended', ({ originalWord, scores }) => {
+socket.on('round-ended', ({ emojis, answer, scores }) => {
   SoundFX.roundEnd();
-
-  const wordEl = document.getElementById('ov-word');
-  wordEl.textContent = originalWord;
-  wordEl.classList.add('revealed');
-
+  const answerEl = document.getElementById('ov-answer');
+  answerEl.textContent = '= ' + answer;
+  answerEl.classList.add('visible');
   renderScores(scores);
 });
 
@@ -123,6 +156,7 @@ socket.on('round-ended', ({ originalWord, scores }) => {
 socket.on('game-over', ({ finalScores }) => {
   SoundFX.gameOver();
   renderScores(finalScores);
+  if (finalScores.length) launchConfetti(3500);
 
   const ovGo = document.getElementById('ov-gameover');
   ovGo.style.display = 'flex';
@@ -134,7 +168,7 @@ socket.on('game-over', ({ finalScores }) => {
     item.className = 'podium-item';
     item.innerHTML = `
       <div class="podium-medal">${MEDALS[i]}</div>
-      <div class="podium-name">${p.name}</div>
+      <div class="podium-name">${escapeHTML(p.name)}</div>
       <div class="podium-score">${p.score}</div>
     `;
     podium.appendChild(item);
@@ -144,15 +178,15 @@ socket.on('game-over', ({ finalScores }) => {
 // ─── Reset / Close ───
 
 socket.on('game-reset', () => {
-  const wordEl = document.getElementById('ov-word');
-  wordEl.textContent = '';
-  wordEl.className = 'overlay-word';
+  document.getElementById('ov-emojis').innerHTML = '';
+  document.getElementById('ov-category').textContent = '';
   document.getElementById('ov-round').textContent = '';
   document.getElementById('ov-winners').innerHTML = '';
-  document.getElementById('ov-hint').textContent = '';
-  document.getElementById('ov-hint').classList.remove('visible');
+  document.getElementById('ov-answer').textContent = '';
+  document.getElementById('ov-answer').classList.remove('visible');
   document.getElementById('ov-timer-text').textContent = '';
   document.getElementById('ov-scores').innerHTML = '';
+  document.getElementById('countdown-overlay').classList.remove('show');
   const ovGo = document.getElementById('ov-gameover');
   if (ovGo) ovGo.style.display = 'none';
 });
@@ -171,7 +205,7 @@ function renderScores(scores) {
     const row = document.createElement('div');
     row.className = 'overlay-score-item';
     const prefix = i < 3 ? MEDALS[i] + ' ' : (i + 1) + '. ';
-    row.innerHTML = `<span class="os-name">${prefix}${p.name}</span><span class="os-val">${p.score}</span>`;
+    row.innerHTML = `<span class="os-name">${prefix}${escapeHTML(p.name)}</span><span class="os-val">${p.score}</span>`;
     container.appendChild(row);
   });
 }

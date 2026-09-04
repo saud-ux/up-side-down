@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>كلمة مقلوبة — الهوست</title>
+  <title>إيموجي — خمّن من الرموز</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -12,8 +12,8 @@
     <!-- Lobby Screen -->
     <div id="lobby-screen" class="screen active">
       <div class="game-header">
-        <h1 class="game-title">كلمة مقلوبة</h1>
-        <p class="game-subtitle">لعبة تفاعلية — صفحة الهوست</p>
+        <h1 class="game-title">إيموجي</h1>
+        <p class="game-subtitle">خمّن من الرموز</p>
       </div>
 
       <div class="card room-code-display" id="room-code-card" style="display:none">
@@ -69,30 +69,14 @@
               </select>
             </div>
             <div class="form-group">
-              <label>الصعوبة</label>
-              <select id="setting-difficulty">
-                <option value="easy">سهل</option>
-                <option value="medium">متوسط</option>
-                <option value="hard">صعب</option>
-                <option value="mixed" selected>مختلط</option>
+              <label>وقت الجولة</label>
+              <select id="setting-time">
+                <option value="20">20 ثانية</option>
+                <option value="30" selected>30 ثانية</option>
+                <option value="45">45 ثانية</option>
+                <option value="60">60 ثانية</option>
               </select>
             </div>
-          </div>
-          <div class="form-group">
-            <label>وقت الجولة (ثانية)</label>
-            <select id="setting-time">
-              <option value="15">15</option>
-              <option value="20" selected>20</option>
-              <option value="30">30</option>
-              <option value="45">45</option>
-            </select>
-          </div>
-          <div class="toggle-row">
-            <span>التلميح</span>
-            <label class="toggle">
-              <input type="checkbox" id="setting-hint" checked>
-              <span class="toggle-slider"></span>
-            </label>
           </div>
         </div>
 
@@ -100,25 +84,78 @@
       </div>
     </div>
 
+    <!-- Round Setup Screen -->
+    <div id="setup-screen" class="screen">
+      <div class="round-info">
+        <span class="round-number">الجولة <span id="s-round">1</span>/<span id="s-total">10</span></span>
+      </div>
+
+      <div class="card">
+        <div class="card-title">الإيموجي</div>
+        <div class="form-group">
+          <input type="text" id="setup-emojis" placeholder="اكتب أو الصق الإيموجيات هنا" dir="ltr"
+                 style="font-size:2rem;text-align:center;padding:16px">
+          <div class="emoji-palette" id="emoji-palette"></div>
+          <div class="emoji-palette-actions">
+            <button type="button" class="btn btn-small emoji-tool-btn" id="emoji-backspace">⌫ حذف</button>
+            <button type="button" class="btn btn-small emoji-tool-btn" id="emoji-clear">مسح الكل</button>
+          </div>
+        </div>
+
+        <div class="card-title">الجواب الصحيح (مخفي عن اللاعبين)</div>
+        <div class="form-group">
+          <input type="text" id="setup-answer" placeholder="الأسد الملك, أسد الملك">
+          <p class="form-hint">افصل بين الإجابات المقبولة بفاصلة</p>
+        </div>
+
+        <div class="card-title">الفئة (اختياري — تلميح للاعبين)</div>
+        <div class="form-group">
+          <input type="text" id="setup-category" placeholder="فيلم">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">أو اختر من الاقتراحات</div>
+        <div class="suggestions-list" id="suggestions-list"></div>
+        <button class="btn btn-secondary btn-small" id="show-more-btn" style="width:100%;margin-top:8px">المزيد...</button>
+      </div>
+
+      <button class="btn btn-primary" id="start-round-btn">ابدأ الجولة</button>
+    </div>
+
     <!-- Game Screen -->
     <div id="game-screen" class="screen">
       <div class="round-info">
         <span class="round-number">الجولة <span id="g-round">1</span>/<span id="g-total">10</span></span>
-        <span class="timer" id="g-timer">20</span>
+        <span class="timer" id="g-timer">30</span>
       </div>
 
-      <div class="reversed-word-container">
-        <div id="g-word-display" class="reversed-word"></div>
+      <div class="answer-hint" id="g-answer-hint"></div>
+
+      <div class="category-display" id="g-category"></div>
+
+      <div class="emoji-display-container">
+        <div class="emoji-display" id="g-emojis"></div>
       </div>
 
-      <div class="hint" id="g-hint"></div>
-
-      <div class="winners-list" id="g-winners"></div>
-
-      <div class="card" id="g-scoreboard-card">
-        <div class="card-title">لوحة النقاط</div>
-        <ol class="scoreboard" id="g-scoreboard"></ol>
+      <div class="game-stats">
+        <span>المحاولات: <strong id="g-attempts">0</strong></span>
+        <span>المجيبين صح: <strong id="g-correct">0</strong>/3</span>
       </div>
+
+      <div class="medals-display" id="g-winners">
+        <div class="medal-slot" id="medal-1"><span class="medal-icon">🥇</span> <span class="medal-name">—</span></div>
+        <div class="medal-slot" id="medal-2"><span class="medal-icon">🥈</span> <span class="medal-name">—</span></div>
+        <div class="medal-slot" id="medal-3"><span class="medal-icon">🥉</span> <span class="medal-name">—</span></div>
+      </div>
+
+      <div class="card" id="g-guesses-card">
+        <div class="card-title">آخر المحاولات</div>
+        <div id="g-guesses" class="guesses-feed"></div>
+        <p id="g-no-guesses" class="waiting-message" style="padding:8px;font-size:0.85rem">بانتظار المحاولات...</p>
+      </div>
+
+      <button class="btn btn-danger" id="end-round-btn" style="width:100%">إنهاء الجولة الآن</button>
     </div>
 
     <!-- Round End Screen -->
@@ -127,8 +164,9 @@
         <span class="round-number">الجولة <span id="re-round">1</span>/<span id="re-total">10</span> — النتيجة</span>
       </div>
 
-      <div class="reversed-word-container">
-        <div id="re-word" class="revealed-word"></div>
+      <div class="emoji-display-container">
+        <div class="emoji-display emoji-small" id="re-emojis"></div>
+        <div class="answer-reveal" id="re-answer"></div>
       </div>
 
       <div class="winners-list" id="re-winners"></div>
@@ -156,8 +194,15 @@
 
   <div class="notification" id="notification"></div>
 
+  <div class="countdown-overlay" id="countdown-overlay">
+    <div class="countdown-category" id="countdown-category"></div>
+    <div class="countdown-number" id="countdown-number">3</div>
+    <div class="countdown-label">استعدوا!</div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="sounds.js"></script>
+  <script src="effects.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

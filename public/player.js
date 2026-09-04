@@ -29,12 +29,16 @@ let myScore = 0;
 let currentRound = 0, totalRounds = 0;
 let myRoundRank = 0;
 
-// ─── Auto-fill room code from URL ───
+// ─── Auto-fill from URL / storage ───
 
 const urlParams = new URLSearchParams(location.search);
 if (urlParams.has('room')) {
   document.getElementById('join-code').value = urlParams.get('room');
 }
+try {
+  const savedName = localStorage.getItem('emoji-player-name');
+  if (savedName) document.getElementById('join-name').value = savedName;
+} catch (e) {}
 
 // ─── Join ───
 
@@ -46,16 +50,11 @@ function joinRoom() {
   const code = document.getElementById('join-code').value.trim();
   const name = document.getElementById('join-name').value.trim();
 
-  if (!code || code.length !== 4) {
-    showError('أدخل كود الغرفة (4 أرقام)');
-    return;
-  }
-  if (!name) {
-    showError('أدخل اسمك');
-    return;
-  }
+  if (!code || code.length !== 4) { showError('أدخل كود الغرفة (4 أرقام)'); return; }
+  if (!name) { showError('أدخل اسمك'); return; }
 
   playerName = name;
+  try { localStorage.setItem('emoji-player-name', name); } catch (e) {}
   socket.emit('join-room', { roomCode: code, playerName: name });
 }
 
@@ -74,22 +73,50 @@ socket.on('joined-room', ({ roomCode, settings, state, scores }) => {
   SoundFX.join();
   document.getElementById('w-name').textContent = playerName;
   showScreen('waiting');
-
+  updateMyScore(scores);
   if (scores && scores.length > 0) {
     document.getElementById('w-scores-card').style.display = '';
     renderScoreboard('w-scoreboard', scores);
   }
 });
 
-// ─── Game Events ───
+// ─── Waiting ───
 
-socket.on('player-joined', ({ name, playerCount }) => {
+socket.on('player-joined', () => {
   if (screens.waiting.classList.contains('active')) {
     document.getElementById('w-scores-card').style.display = '';
   }
 });
 
+// ─── Countdown ───
+
+socket.on('round-countdown', ({ category, count }) => {
+  const overlay = document.getElementById('countdown-overlay');
+  document.getElementById('countdown-category').textContent = category ? categoryLabel(category) : '';
+  document.getElementById('countdown-number').textContent = count;
+  overlay.classList.add('show');
+  bumpCountdown();
+  SoundFX.tick();
+});
+
+socket.on('countdown-tick', ({ count }) => {
+  document.getElementById('countdown-number').textContent = count;
+  bumpCountdown();
+  SoundFX.tick();
+});
+
+function bumpCountdown() {
+  const num = document.getElementById('countdown-number');
+  num.classList.remove('pop');
+  void num.offsetWidth;
+  num.classList.add('pop');
+}
+
+// ─── Round ───
+
 socket.on('round-started', (data) => {
+  document.getElementById('countdown-overlay').classList.remove('show');
+
   currentRound = data.roundNumber;
   totalRounds = data.totalRounds;
   myRoundRank = 0;
@@ -101,10 +128,16 @@ socket.on('round-started', (data) => {
   document.getElementById('p-timer').textContent = data.duration;
   document.getElementById('p-timer').className = 'timer';
 
-  document.getElementById('p-word').textContent = data.word;
+  renderEmojiBoxes(document.getElementById('p-emojis'), data.emojis, 'emoji-large');
 
-  document.getElementById('p-hint').textContent = '';
-  document.getElementById('p-hint').classList.remove('visible');
+  const catEl = document.getElementById('p-category');
+  if (data.category) {
+    catEl.textContent = categoryLabel(data.category);
+    catEl.style.display = '';
+  } else {
+    catEl.style.display = 'none';
+  }
+
   document.getElementById('p-attempts').innerHTML = '';
   document.getElementById('p-winners').innerHTML = '';
 
@@ -123,13 +156,6 @@ socket.on('timer-tick', ({ remaining }) => {
   if (remaining <= 5 && remaining > 0) SoundFX.tick();
 });
 
-socket.on('hint-revealed', ({ firstLetter }) => {
-  const hint = document.getElementById('p-hint');
-  hint.textContent = '💡 الحرف الأول: ' + firstLetter;
-  hint.classList.add('visible');
-  SoundFX.hint();
-});
-
 // ─── Guess ───
 
 document.getElementById('guess-btn').addEventListener('click', submitGuess);
@@ -141,7 +167,6 @@ function submitGuess() {
   const input = document.getElementById('guess-input');
   const guess = input.value.trim();
   if (!guess) return;
-
   socket.emit('submit-guess', { guess });
   input.value = '';
   input.focus();
@@ -152,11 +177,11 @@ socket.on('wrong-guess', ({ guess }) => {
   const attempts = document.getElementById('p-attempts');
   const span = document.createElement('span');
   span.className = 'attempt wrong';
-  span.textContent = guess + ' ❌';
+  span.textContent = '"' + guess + '" ❌';
   attempts.appendChild(span);
 });
 
-socket.on('correct-answer', ({ playerName: name, rank, points, timeElapsed }) => {
+socket.on('correct-answer', ({ playerName: name, rank, points }) => {
   if (name === playerName) {
     myRoundRank = rank;
     myScore += points;
@@ -167,7 +192,7 @@ socket.on('correct-answer', ({ playerName: name, rank, points, timeElapsed }) =>
     const attempts = document.getElementById('p-attempts');
     const span = document.createElement('span');
     span.className = 'attempt correct';
-    span.textContent = MEDALS[rank - 1] + ' إجابة صحيحة!';
+    span.textContent = MEDALS[rank - 1] + ' إجابة صحيحة! +' + points;
     attempts.appendChild(span);
   }
 
@@ -176,7 +201,7 @@ socket.on('correct-answer', ({ playerName: name, rank, points, timeElapsed }) =>
   item.className = 'winner-item';
   item.innerHTML = `
     <span class="medal">${MEDALS[rank - 1]}</span>
-    <span class="name">${name}</span>
+    <span class="name">${escapeHTML(name)}</span>
     <span class="points">+${points}</span>
   `;
   winners.appendChild(item);
@@ -184,13 +209,15 @@ socket.on('correct-answer', ({ playerName: name, rank, points, timeElapsed }) =>
 
 // ─── Round End ───
 
-socket.on('round-ended', ({ originalWord, winners, scores }) => {
+socket.on('round-ended', ({ emojis, answer, winners, scores }) => {
   SoundFX.roundEnd();
   showScreen('result');
 
   document.getElementById('r-round').textContent = currentRound;
   document.getElementById('r-total').textContent = totalRounds;
-  document.getElementById('r-word').textContent = originalWord;
+
+  renderEmojiBoxes(document.getElementById('r-emojis'), emojis, 'emoji-small');
+  document.getElementById('r-answer').textContent = '= ' + answer;
 
   const resultEl = document.getElementById('r-result');
   if (myRoundRank > 0) {
@@ -221,6 +248,7 @@ socket.on('game-over', ({ finalScores }) => {
 
   updateMyScore(finalScores);
   const myRank = finalScores.findIndex(s => s.name === playerName) + 1;
+  if (myRank >= 1 && myRank <= 3) launchConfetti();
 
   const resultEl = document.getElementById('pgo-result');
   if (myRank <= 3 && myRank > 0) {
@@ -244,7 +272,7 @@ socket.on('game-over', ({ finalScores }) => {
     item.className = 'podium-item';
     item.innerHTML = `
       <div class="podium-medal">${MEDALS[i]}</div>
-      <div class="podium-name">${p.name}</div>
+      <div class="podium-name">${escapeHTML(p.name)}</div>
       <div class="podium-score">${p.score}</div>
     `;
     podium.appendChild(item);
@@ -280,7 +308,7 @@ function renderScoreboard(id, scores) {
     li.style.background = isMe ? 'rgba(52,152,219,0.12)' : '';
     li.innerHTML = `
       <span class="score-rank">${i + 1}</span>
-      <span class="score-name"><span class="score-type">${p.type === 'twitch' ? '🟣' : '🌐'}</span>${p.name}${isMe ? ' (أنت)' : ''}</span>
+      <span class="score-name"><span class="score-type">${p.type === 'twitch' ? '🟣' : '🌐'}</span>${escapeHTML(p.name)}${isMe ? ' (أنت)' : ''}</span>
       <span class="score-value">${p.score}</span>
     `;
     ol.appendChild(li);
@@ -288,6 +316,7 @@ function renderScoreboard(id, scores) {
 }
 
 function updateMyScore(scores) {
+  if (!scores) return;
   const me = scores.find(s => s.name === playerName);
   if (me) myScore = me.score;
 }

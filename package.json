@@ -1,7 +1,7 @@
 {
-  "name": "reversed-word",
+  "name": "emoji-guessing",
   "version": "1.0.0",
-  "description": "لعبة كلمة مقلوبة - Arabic Reversed Word Game",
+  "description": "إيموجي — خمّن من الرموز - لعبة تفاعلية عبر تويتش والمتصفح",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

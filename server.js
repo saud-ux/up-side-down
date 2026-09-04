@@ -9,45 +9,30 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
-// ─── Word Bank ───
+// ─── Config ───
 
-const WORDS = {
-  easy: [
-    'بيت','باب','قلم','كتاب','شمس','قمر','نجم','وردة','سمك','قطة',
-    'كلب','شجرة','مطر','بحر','نهر','جبل','قلب','عين','حلم','خبز',
-    'أرز','حليب','عسل','ملح','سكر','بيض','تمر','عنب','موز','ضوء',
-    'صوت','ريح','ثوب','حذاء','ساعة','مفتاح','طريق','ورق','سيف','درع',
-    'برج','جسر','بئر','رمل','حبل','سحاب','لؤلؤ','ثلج','نار','ماء',
-    'تفاح','ليمون','قبعة','خاتم','قلعة','صخرة','عشب','غابة','صدف','وطن'
-  ],
-  medium: [
-    'مدرسة','حاسوب','طائرة','سيارة','مكتبة','هاتف','ملعب','مطبخ','حديقة','مطار',
-    'جامعة','مطعم','فندق','فراولة','بطيخ','أناناس','رمان','خيار','طماطم','جزر',
-    'بطاطس','فلفل','كرسي','طاولة','سرير','مرآة','ستارة','مصباح','حقيبة','مظلة',
-    'دفتر','ممحاة','شاشة','نافذة','جدار','أرنب','دجاجة','حصان','غزال','حمامة',
-    'نسر','ثعلب','ذئب','نمر','صقر','فيل','مسجد','قصر','نحاس','بركة',
-    'شاطئ','جزيرة','حديد','قارب','مرساة','عنكبوت','جمل','طبيب','معلم','شرطة'
-  ],
-  hard: [
-    'تلفزيون','ثلاجة','غسالة','مكنسة','ميكروفون','سماعات','كاميرا','بطارية','فراشة','عصفور',
-    'عقرب','سلحفاة','تمساح','زرافة','دلفين','أخطبوط','ديناصور','بركان','شلال','محيط',
-    'كوكب','مجرة','صاروخ','غواصة','دراجة','حافلة','سفينة','بوصلة','خريطة','مستشفى',
-    'صيدلية','متحف','صحراء','مروحة','شاحن','طابعة','مسطرة','حاسبة','شوكولاتة','بطريق',
-    'حرباء','خفاش','كركدن','طاووس','حلزون','تلسكوب','مغناطيس','شمعدان','قيثارة','سنجاب',
-    'عندليب','يعسوب','فانوس','دولاب','صندوق','منظار','مفرقعات','صنارة','عنقود','زمرد'
-  ]
-};
+const MIN_GUESS_INTERVAL = 250;   // ms between guesses per player
+const MAX_GUESSES_PER_ROUND = 40; // anti-spam cap per player per round
+const COUNTDOWN_SECONDS = 3;
 
 // ─── Utilities ───
 
 function normalizeArabic(text) {
   let n = text.trim();
-  n = n.replace(/[ؐ-ًؚ-ٰٟۖ-ۜ۟-۪ۤۧۨ-ۭ]/g, '');
+  n = n.replace(/[ؐ-ًؚ-ٰٟۖ-ۜ۟-۪ۤۧۨ-ۭ]/g, '');
   n = n.replace(/[أإآٱ]/g, 'ا');
   n = n.replace(/ة/g, 'ه');
   n = n.replace(/ى/g, 'ي');
   n = n.replace(/^ال/, '');
+  n = n.replace(/\s+/g, ' ');
+  n = n.toLowerCase();
   return n;
+}
+
+function isCorrectAnswer(guess, acceptedAnswers) {
+  const normalizedGuess = normalizeArabic(guess);
+  if (!normalizedGuess) return false;
+  return acceptedAnswers.some(ans => normalizeArabic(ans) === normalizedGuess);
 }
 
 function generateRoomCode() {
@@ -58,20 +43,8 @@ function generateRoomCode() {
   return code;
 }
 
-function pickWord(room) {
-  const diff = room.settings.difficulty;
-  let pool;
-  if (diff === 'mixed') {
-    pool = [...WORDS.easy, ...WORDS.medium, ...WORDS.hard];
-  } else {
-    pool = [...WORDS[diff]];
-  }
-  const available = pool.filter(w => !room.usedWords.has(w));
-  if (available.length === 0) {
-    room.usedWords.clear();
-    return pool[Math.floor(Math.random() * pool.length)];
-  }
-  return available[Math.floor(Math.random() * available.length)];
+function sanitizeName(name) {
+  return String(name || '').trim().slice(0, 20);
 }
 
 // ─── Room Management ───
@@ -89,15 +62,21 @@ function getScoreboard(room) {
     .sort((a, b) => b.score - a.score);
 }
 
+function clearRoomTimers(room) {
+  if (room.timer) { clearInterval(room.timer); room.timer = null; }
+  if (room.countdownTimer) { clearInterval(room.countdownTimer); room.countdownTimer = null; }
+}
+
 function endRound(room) {
   if (room.state !== 'playing') return;
-  if (room.timer) { clearInterval(room.timer); room.timer = null; }
+  clearRoomTimers(room);
 
   const isLastRound = room.currentRound >= room.settings.rounds;
   room.state = isLastRound ? 'gameOver' : 'roundEnd';
 
   const data = {
-    originalWord: room.currentWord,
+    emojis: room.currentEmojis,
+    answer: room.currentAnswers[0],
     winners: room.roundWinners,
     scores: getScoreboard(room)
   };
@@ -111,38 +90,61 @@ function endRound(room) {
   }
 }
 
-function startRound(room) {
+function startRound(room, { emojis, answers, category }) {
+  clearRoomTimers(room);
+  room.pendingRound = { emojis, answers, category: category || '' };
+  room.state = 'countdown';
+
+  const roundNumber = room.currentRound + 1;
+  io.to(room.code).emit('round-countdown', {
+    roundNumber,
+    totalRounds: room.settings.rounds,
+    category: category || '',
+    count: COUNTDOWN_SECONDS
+  });
+
+  let count = COUNTDOWN_SECONDS;
+  room.countdownTimer = setInterval(() => {
+    count--;
+    if (count > 0) {
+      io.to(room.code).emit('countdown-tick', { count });
+    } else {
+      clearInterval(room.countdownTimer);
+      room.countdownTimer = null;
+      beginRound(room);
+    }
+  }, 1000);
+}
+
+function beginRound(room) {
+  const { emojis, answers, category } = room.pendingRound;
   room.currentRound++;
   room.state = 'playing';
   room.roundWinners = [];
-  room.hintRevealed = false;
+  room.totalAttempts = 0;
 
-  const word = pickWord(room);
-  room.currentWord = word;
-  room.usedWords.add(word);
+  room.currentEmojis = emojis;
+  room.currentAnswers = answers;
+  room.currentCategory = category || '';
   room.roundStartTime = Date.now();
   room.remaining = room.settings.roundTime;
 
-  const data = {
+  Object.values(room.players).forEach(p => {
+    p.roundGuesses = 0;
+    p.lastGuessTime = 0;
+  });
+
+  io.to(room.code).emit('round-started', {
     roundNumber: room.currentRound,
     totalRounds: room.settings.rounds,
-    word: word,
+    emojis,
+    category: category || '',
     duration: room.settings.roundTime
-  };
-
-  io.to(room.code).emit('round-started', data);
+  });
 
   room.timer = setInterval(() => {
     room.remaining--;
-
     io.to(room.code).emit('timer-tick', { remaining: room.remaining });
-
-    const halfTime = Math.floor(room.settings.roundTime / 2);
-    if (room.remaining === halfTime && room.settings.hintEnabled && room.roundWinners.length === 0 && !room.hintRevealed) {
-      room.hintRevealed = true;
-      io.to(room.code).emit('hint-revealed', { firstLetter: word.charAt(0) });
-    }
-
     if (room.remaining <= 0) {
       endRound(room);
     }
@@ -151,21 +153,32 @@ function startRound(room) {
 
 function processGuess(room, playerId, guess) {
   if (room.state !== 'playing') return;
-  if (room.roundWinners.length >= 3) return;
 
-  const normalizedGuess = normalizeArabic(guess);
-  const normalizedAnswer = normalizeArabic(room.currentWord);
+  const player = room.players[playerId];
+  if (!player) return;
 
-  if (normalizedGuess === normalizedAnswer) {
-    const alreadyWon = room.roundWinners.some(w => w.playerId === playerId);
-    if (alreadyWon) return;
+  const alreadyWon = room.roundWinners.some(w => w.playerId === playerId);
+  if (alreadyWon) return;
+
+  // Anti-spam: rate limit + per-round cap
+  const now = Date.now();
+  if (now - (player.lastGuessTime || 0) < MIN_GUESS_INTERVAL) return;
+  if ((player.roundGuesses || 0) >= MAX_GUESSES_PER_ROUND) return;
+  player.lastGuessTime = now;
+  player.roundGuesses = (player.roundGuesses || 0) + 1;
+
+  const trimmed = String(guess || '').trim();
+  if (!trimmed) return;
+
+  room.totalAttempts++;
+
+  if (isCorrectAnswer(trimmed, room.currentAnswers)) {
+    if (room.roundWinners.length >= 3) return;
 
     const rank = room.roundWinners.length + 1;
     const points = 4 - rank;
-    const elapsed = Math.round((Date.now() - room.roundStartTime) / 1000);
+    const elapsed = Math.round((now - room.roundStartTime) / 1000);
 
-    const player = room.players[playerId];
-    if (!player) return;
     player.score += points;
 
     room.roundWinners.push({
@@ -187,9 +200,14 @@ function processGuess(room, playerId, guess) {
       setTimeout(() => endRound(room), 1500);
     }
   } else {
-    const player = room.players[playerId];
-    if (player && player.socketId) {
-      io.to(player.socketId).emit('wrong-guess', { guess });
+    if (player.socketId) {
+      io.to(player.socketId).emit('wrong-guess', { guess: trimmed });
+    }
+    if (room.hostSocket) {
+      io.to(room.hostSocket).emit('guess-attempt', {
+        playerName: player.name,
+        guess: trimmed
+      });
     }
   }
 }
@@ -210,7 +228,7 @@ function connectTwitch(room, channel) {
     room.twitchChannel = channel;
     room.twitchClient = client;
     io.to(room.code).emit('twitch-connected', { channel });
-  }).catch(err => {
+  }).catch(() => {
     if (room.hostSocket) {
       io.to(room.hostSocket).emit('twitch-error', { message: 'فشل الاتصال بالقناة' });
     }
@@ -229,7 +247,9 @@ function connectTwitch(room, channel) {
           name: username,
           type: 'twitch',
           score: 0,
-          socketId: null
+          socketId: null,
+          roundGuesses: 0,
+          lastGuessTime: 0
         };
         io.to(room.code).emit('player-joined', {
           name: username,
@@ -274,26 +294,27 @@ function disconnectTwitch(room) {
 
 io.on('connection', (socket) => {
 
-  // Host: create room
   socket.on('create-room', () => {
     const code = generateRoomCode();
     rooms[code] = {
       code,
       hostSocket: socket.id,
       players: {},
+      scoreMemory: {},
       settings: {
         rounds: 10,
-        difficulty: 'mixed',
-        roundTime: 20,
-        hintEnabled: true
+        roundTime: 30
       },
       state: 'lobby',
       currentRound: 0,
-      currentWord: null,
+      currentEmojis: '',
+      currentAnswers: [],
+      currentCategory: '',
+      pendingRound: null,
       roundWinners: [],
-      hintRevealed: false,
-      usedWords: new Set(),
+      totalAttempts: 0,
       timer: null,
+      countdownTimer: null,
       remaining: 0,
       roundStartTime: 0,
       twitchClient: null,
@@ -305,59 +326,71 @@ io.on('connection', (socket) => {
     socket.emit('room-created', { roomCode: code });
   });
 
-  // Host: update settings
   socket.on('update-settings', (data) => {
     const code = socketToRoom[socket.id];
     const room = rooms[code];
     if (!room || room.hostSocket !== socket.id) return;
-    Object.assign(room.settings, data);
+    const clean = {};
+    if (Number.isFinite(data.rounds)) clean.rounds = Math.max(1, Math.min(50, data.rounds));
+    if (Number.isFinite(data.roundTime)) clean.roundTime = Math.max(5, Math.min(300, data.roundTime));
+    Object.assign(room.settings, clean);
     io.to(code).emit('settings-updated', room.settings);
   });
 
-  // Host: start round
-  socket.on('start-round', () => {
+  socket.on('start-round', ({ emojis, answers, category }) => {
     const code = socketToRoom[socket.id];
     const room = rooms[code];
     if (!room || room.hostSocket !== socket.id) return;
-    if (room.state === 'lobby' || room.state === 'roundEnd') {
-      startRound(room);
-    }
+    if (room.state !== 'lobby' && room.state !== 'roundEnd') return;
+
+    const cleanEmojis = String(emojis || '').trim().slice(0, 100);
+    const cleanAnswers = (Array.isArray(answers) ? answers : [])
+      .map(a => String(a || '').trim())
+      .filter(Boolean)
+      .slice(0, 20);
+    const cleanCategory = String(category || '').trim().slice(0, 30);
+
+    if (!cleanEmojis || cleanAnswers.length === 0) return;
+
+    startRound(room, { emojis: cleanEmojis, answers: cleanAnswers, category: cleanCategory });
   });
 
-  // Host: next round (alias)
-  socket.on('next-round', () => {
+  socket.on('end-round', () => {
     const code = socketToRoom[socket.id];
     const room = rooms[code];
     if (!room || room.hostSocket !== socket.id) return;
-    if (room.state === 'roundEnd') {
-      startRound(room);
+    if (room.state === 'playing') {
+      endRound(room);
     }
   });
 
-  // Host: reset game
   socket.on('reset-game', () => {
     const code = socketToRoom[socket.id];
     const room = rooms[code];
     if (!room || room.hostSocket !== socket.id) return;
-    if (room.timer) { clearInterval(room.timer); room.timer = null; }
+    clearRoomTimers(room);
     room.state = 'lobby';
     room.currentRound = 0;
-    room.currentWord = null;
+    room.currentEmojis = '';
+    room.currentAnswers = [];
+    room.currentCategory = '';
+    room.pendingRound = null;
     room.roundWinners = [];
-    room.usedWords.clear();
-    Object.values(room.players).forEach(p => p.score = 0);
+    room.totalAttempts = 0;
+    room.scoreMemory = {};
+    Object.values(room.players).forEach(p => { p.score = 0; });
     io.to(code).emit('game-reset', { scores: getScoreboard(room) });
   });
 
-  // Host: connect twitch
   socket.on('connect-twitch', ({ channel }) => {
     const code = socketToRoom[socket.id];
     const room = rooms[code];
     if (!room || room.hostSocket !== socket.id) return;
-    connectTwitch(room, channel);
+    const clean = String(channel || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 25);
+    if (!clean) return;
+    connectTwitch(room, clean);
   });
 
-  // Host: disconnect twitch
   socket.on('disconnect-twitch', () => {
     const code = socketToRoom[socket.id];
     const room = rooms[code];
@@ -365,7 +398,6 @@ io.on('connection', (socket) => {
     disconnectTwitch(room);
   });
 
-  // Player: join room
   socket.on('join-room', ({ roomCode, playerName }) => {
     const room = rooms[roomCode];
     if (!room) {
@@ -373,13 +405,28 @@ io.on('connection', (socket) => {
       return;
     }
 
+    const name = sanitizeName(playerName);
+    if (!name) {
+      socket.emit('join-error', { message: 'أدخل اسمك' });
+      return;
+    }
+
     const playerId = socket.id;
+    // Reconnection: restore score if this name was in the room before
+    let startScore = 0;
+    if (Object.prototype.hasOwnProperty.call(room.scoreMemory, name)) {
+      startScore = room.scoreMemory[name];
+      delete room.scoreMemory[name];
+    }
+
     room.players[playerId] = {
       id: playerId,
-      name: playerName,
+      name,
       type: 'web',
-      score: 0,
-      socketId: socket.id
+      score: startScore,
+      socketId: socket.id,
+      roundGuesses: 0,
+      lastGuessTime: 0
     };
 
     socketToRoom[socket.id] = roomCode;
@@ -393,13 +440,12 @@ io.on('connection', (socket) => {
     });
 
     io.to(roomCode).emit('player-joined', {
-      name: playerName,
+      name,
       type: 'web',
       playerCount: getPlayerCount(room)
     });
   });
 
-  // Player: submit guess
   socket.on('submit-guess', ({ guess }) => {
     const code = socketToRoom[socket.id];
     const room = rooms[code];
@@ -407,7 +453,6 @@ io.on('connection', (socket) => {
     processGuess(room, socket.id, guess);
   });
 
-  // Player: leave room
   socket.on('leave-room', () => {
     const code = socketToRoom[socket.id];
     const room = rooms[code];
@@ -425,7 +470,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Overlay: join
   socket.on('join-overlay', ({ roomCode }) => {
     const room = rooms[roomCode];
     if (!room) {
@@ -442,7 +486,6 @@ io.on('connection', (socket) => {
     });
   });
 
-  // Disconnect
   socket.on('disconnect', () => {
     const code = socketToRoom[socket.id];
     if (!code) return;
@@ -450,7 +493,7 @@ io.on('connection', (socket) => {
     if (!room) return;
 
     if (room.hostSocket === socket.id) {
-      if (room.timer) clearInterval(room.timer);
+      clearRoomTimers(room);
       disconnectTwitch(room);
       io.to(code).emit('room-closed');
       Object.keys(room.players).forEach(id => {
@@ -463,10 +506,12 @@ io.on('connection', (socket) => {
     } else if (room.overlays.has(socket.id)) {
       room.overlays.delete(socket.id);
     } else if (room.players[socket.id]) {
-      const name = room.players[socket.id].name;
+      const player = room.players[socket.id];
+      // Remember score so the player can reclaim it by rejoining with the same name
+      room.scoreMemory[player.name] = player.score;
       delete room.players[socket.id];
       io.to(code).emit('player-left', {
-        name,
+        name: player.name,
         playerCount: getPlayerCount(room)
       });
     }

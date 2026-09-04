@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>كلمة مقلوبة — أوفرلاي</title>
+  <title>إيموجي — أوفرلاي</title>
   <link rel="stylesheet" href="styles.css">
   <style>
     body { background: transparent !important; overflow: hidden; }
@@ -37,9 +37,11 @@
       <span class="overlay-timer-text" id="ov-timer-text"></span>
     </div>
 
-    <div id="ov-word" class="overlay-word"></div>
+    <div class="overlay-category" id="ov-category"></div>
 
-    <div class="overlay-hint" id="ov-hint"></div>
+    <div id="ov-emojis" class="overlay-emojis"></div>
+
+    <div class="overlay-answer" id="ov-answer"></div>
 
     <div class="overlay-winners" id="ov-winners"></div>
 
@@ -49,14 +51,20 @@
     </div>
 
     <!-- Game Over overlay -->
-    <div id="ov-gameover" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.7);display:none;flex-direction:column;align-items:center;justify-content:center">
+    <div id="ov-gameover" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.7);flex-direction:column;align-items:center;justify-content:center">
       <div class="game-over-title" style="font-size:3rem;margin-bottom:20px">انتهت اللعبة!</div>
       <div class="podium" id="ov-podium"></div>
     </div>
   </div>
 
+  <div class="countdown-overlay overlay-countdown" id="countdown-overlay">
+    <div class="countdown-category" id="countdown-category"></div>
+    <div class="countdown-number" id="countdown-number">3</div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="sounds.js"></script>
+  <script src="effects.js"></script>
   <script src="overlay.js"></script>
 </body>
 </html>

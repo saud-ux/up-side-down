@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>كلمة مقلوبة — اللاعب</title>
+  <title>إيموجي — اللاعب</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -12,8 +12,8 @@
     <!-- Join Screen -->
     <div id="join-screen" class="screen active">
       <div class="game-header">
-        <h1 class="game-title">كلمة مقلوبة</h1>
-        <p class="game-subtitle">انضم للعبة وخمّن الكلمة!</p>
+        <h1 class="game-title">إيموجي</h1>
+        <p class="game-subtitle">انضم للعبة وخمّن من الرموز!</p>
       </div>
 
       <div class="card">
@@ -34,7 +34,7 @@
     <!-- Waiting Screen -->
     <div id="waiting-screen" class="screen">
       <div class="game-header">
-        <h1 class="game-title">كلمة مقلوبة</h1>
+        <h1 class="game-title">إيموجي</h1>
       </div>
       <div class="card waiting-message">
         <div class="spinner"></div>
@@ -53,15 +53,14 @@
     <div id="play-screen" class="screen">
       <div class="round-info">
         <span class="round-number">الجولة <span id="p-round">1</span>/<span id="p-total">10</span></span>
-        <span class="timer" id="p-timer">20</span>
+        <span class="timer" id="p-timer">30</span>
       </div>
 
-      <div class="reversed-word-container">
-        <p style="color:var(--text-dim);margin-bottom:8px;font-size:0.9rem">ما هي الكلمة؟</p>
-        <div id="p-word" class="reversed-word"></div>
-      </div>
+      <div class="category-display" id="p-category"></div>
 
-      <div class="hint" id="p-hint"></div>
+      <div class="emoji-display-container">
+        <div class="emoji-display emoji-large" id="p-emojis"></div>
+      </div>
 
       <div class="guess-area">
         <div class="guess-input-row">
@@ -83,8 +82,9 @@
         <span class="round-number">الجولة <span id="r-round">1</span>/<span id="r-total">10</span></span>
       </div>
 
-      <div class="reversed-word-container">
-        <div id="r-word" class="revealed-word"></div>
+      <div class="emoji-display-container">
+        <div class="emoji-display emoji-small" id="r-emojis"></div>
+        <div class="answer-reveal" id="r-answer"></div>
       </div>
 
       <div class="player-result" id="r-result"></div>
@@ -124,8 +124,15 @@
 
   <div class="notification" id="notification"></div>
 
+  <div class="countdown-overlay" id="countdown-overlay">
+    <div class="countdown-category" id="countdown-category"></div>
+    <div class="countdown-number" id="countdown-number">3</div>
+    <div class="countdown-label">استعد!</div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="sounds.js"></script>
+  <script src="effects.js"></script>
   <script src="player.js"></script>
 </body>
 </html>
