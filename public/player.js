@@ -29,12 +29,17 @@ let myScore = 0;
 let currentRound = 0, totalRounds = 0;
 let myRoundRank = 0;
 
-// ─── Auto-fill room code from URL ───
+// ─── Auto-fill from URL and saved name ───
 
 const urlParams = new URLSearchParams(location.search);
 if (urlParams.has('room')) {
   document.getElementById('join-code').value = urlParams.get('room');
 }
+
+try {
+  const saved = localStorage.getItem('playerName');
+  if (saved) document.getElementById('join-name').value = saved;
+} catch(e) {}
 
 // ─── Join ───
 
@@ -56,6 +61,7 @@ function joinRoom() {
   }
 
   playerName = name;
+  try { localStorage.setItem('playerName', name); } catch(e) {}
   socket.emit('join-room', { roomCode: code, playerName: name });
 }
 
