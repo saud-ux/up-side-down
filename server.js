@@ -9,45 +9,22 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
-// ─── Word Bank ───
-
-const WORDS = {
-  easy: [
-    'بيت','باب','قلم','كتاب','شمس','قمر','نجم','وردة','سمك','قطة',
-    'كلب','شجرة','مطر','بحر','نهر','جبل','قلب','عين','حلم','خبز',
-    'أرز','حليب','عسل','ملح','سكر','بيض','تمر','عنب','موز','ضوء',
-    'صوت','ريح','ثوب','حذاء','ساعة','مفتاح','طريق','ورق','سيف','درع',
-    'برج','جسر','بئر','رمل','حبل','سحاب','لؤلؤ','ثلج','نار','ماء',
-    'تفاح','ليمون','قبعة','خاتم','قلعة','صخرة','عشب','غابة','صدف','وطن'
-  ],
-  medium: [
-    'مدرسة','حاسوب','طائرة','سيارة','مكتبة','هاتف','ملعب','مطبخ','حديقة','مطار',
-    'جامعة','مطعم','فندق','فراولة','بطيخ','أناناس','رمان','خيار','طماطم','جزر',
-    'بطاطس','فلفل','كرسي','طاولة','سرير','مرآة','ستارة','مصباح','حقيبة','مظلة',
-    'دفتر','ممحاة','شاشة','نافذة','جدار','أرنب','دجاجة','حصان','غزال','حمامة',
-    'نسر','ثعلب','ذئب','نمر','صقر','فيل','مسجد','قصر','نحاس','بركة',
-    'شاطئ','جزيرة','حديد','قارب','مرساة','عنكبوت','جمل','طبيب','معلم','شرطة'
-  ],
-  hard: [
-    'تلفزيون','ثلاجة','غسالة','مكنسة','ميكروفون','سماعات','كاميرا','بطارية','فراشة','عصفور',
-    'عقرب','سلحفاة','تمساح','زرافة','دلفين','أخطبوط','ديناصور','بركان','شلال','محيط',
-    'كوكب','مجرة','صاروخ','غواصة','دراجة','حافلة','سفينة','بوصلة','خريطة','مستشفى',
-    'صيدلية','متحف','صحراء','مروحة','شاحن','طابعة','مسطرة','حاسبة','شوكولاتة','بطريق',
-    'حرباء','خفاش','كركدن','طاووس','حلزون','تلسكوب','مغناطيس','شمعدان','قيثارة','سنجاب',
-    'عندليب','يعسوب','فانوس','دولاب','صندوق','منظار','مفرقعات','صنارة','عنقود','زمرد'
-  ]
-};
-
 // ─── Utilities ───
 
 function normalizeArabic(text) {
   let n = text.trim();
-  n = n.replace(/[ؐ-ًؚ-ٰٟۖ-ۜ۟-۪ۤۧۨ-ۭ]/g, '');
+  n = n.replace(/[ؐ-ًؚ-ٰٟۖ-ۜ۟-۪ۤۧۨ-ۭ]/g, '');
   n = n.replace(/[أإآٱ]/g, 'ا');
   n = n.replace(/ة/g, 'ه');
   n = n.replace(/ى/g, 'ي');
   n = n.replace(/^ال/, '');
+  n = n.toLowerCase();
   return n;
+}
+
+function isCorrectAnswer(guess, acceptedAnswers) {
+  const normalizedGuess = normalizeArabic(guess);
+  return acceptedAnswers.some(ans => normalizeArabic(ans) === normalizedGuess);
 }
 
 function generateRoomCode() {
@@ -56,22 +33,6 @@ function generateRoomCode() {
     code = String(Math.floor(1000 + Math.random() * 9000));
   } while (rooms[code]);
   return code;
-}
-
-function pickWord(room) {
-  const diff = room.settings.difficulty;
-  let pool;
-  if (diff === 'mixed') {
-    pool = [...WORDS.easy, ...WORDS.medium, ...WORDS.hard];
-  } else {
-    pool = [...WORDS[diff]];
-  }
-  const available = pool.filter(w => !room.usedWords.has(w));
-  if (available.length === 0) {
-    room.usedWords.clear();
-    return pool[Math.floor(Math.random() * pool.length)];
-  }
-  return available[Math.floor(Math.random() * available.length)];
 }
 
 // ─── Room Management ───
@@ -97,7 +58,8 @@ function endRound(room) {
   room.state = isLastRound ? 'gameOver' : 'roundEnd';
 
   const data = {
-    originalWord: room.currentWord,
+    emojis: room.currentEmojis,
+    answer: room.currentAnswers[0],
     winners: room.roundWinners,
     scores: getScoreboard(room)
   };
@@ -111,22 +73,23 @@ function endRound(room) {
   }
 }
 
-function startRound(room) {
+function startRound(room, { emojis, answers, category }) {
   room.currentRound++;
   room.state = 'playing';
   room.roundWinners = [];
-  room.hintRevealed = false;
+  room.totalAttempts = 0;
 
-  const word = pickWord(room);
-  room.currentWord = word;
-  room.usedWords.add(word);
+  room.currentEmojis = emojis;
+  room.currentAnswers = answers;
+  room.currentCategory = category || '';
   room.roundStartTime = Date.now();
   room.remaining = room.settings.roundTime;
 
   const data = {
     roundNumber: room.currentRound,
     totalRounds: room.settings.rounds,
-    word: word,
+    emojis,
+    category: category || '',
     duration: room.settings.roundTime
   };
 
@@ -134,14 +97,7 @@ function startRound(room) {
 
   room.timer = setInterval(() => {
     room.remaining--;
-
     io.to(room.code).emit('timer-tick', { remaining: room.remaining });
-
-    const halfTime = Math.floor(room.settings.roundTime / 2);
-    if (room.remaining === halfTime && room.settings.hintEnabled && room.roundWinners.length === 0 && !room.hintRevealed) {
-      room.hintRevealed = true;
-      io.to(room.code).emit('hint-revealed', { firstLetter: word.charAt(0) });
-    }
 
     if (room.remaining <= 0) {
       endRound(room);
@@ -151,14 +107,14 @@ function startRound(room) {
 
 function processGuess(room, playerId, guess) {
   if (room.state !== 'playing') return;
-  if (room.roundWinners.length >= 3) return;
 
-  const normalizedGuess = normalizeArabic(guess);
-  const normalizedAnswer = normalizeArabic(room.currentWord);
+  const alreadyWon = room.roundWinners.some(w => w.playerId === playerId);
+  if (alreadyWon) return;
 
-  if (normalizedGuess === normalizedAnswer) {
-    const alreadyWon = room.roundWinners.some(w => w.playerId === playerId);
-    if (alreadyWon) return;
+  room.totalAttempts++;
+
+  if (isCorrectAnswer(guess, room.currentAnswers)) {
+    if (room.roundWinners.length >= 3) return;
 
     const rank = room.roundWinners.length + 1;
     const points = 4 - rank;
@@ -188,8 +144,17 @@ function processGuess(room, playerId, guess) {
     }
   } else {
     const player = room.players[playerId];
-    if (player && player.socketId) {
+    if (!player) return;
+
+    if (player.socketId) {
       io.to(player.socketId).emit('wrong-guess', { guess });
+    }
+
+    if (room.hostSocket) {
+      io.to(room.hostSocket).emit('guess-attempt', {
+        playerName: player.name,
+        guess
+      });
     }
   }
 }
@@ -210,7 +175,7 @@ function connectTwitch(room, channel) {
     room.twitchChannel = channel;
     room.twitchClient = client;
     io.to(room.code).emit('twitch-connected', { channel });
-  }).catch(err => {
+  }).catch(() => {
     if (room.hostSocket) {
       io.to(room.hostSocket).emit('twitch-error', { message: 'فشل الاتصال بالقناة' });
     }
@@ -274,7 +239,6 @@ function disconnectTwitch(room) {
 
 io.on('connection', (socket) => {
 
-  // Host: create room
   socket.on('create-room', () => {
     const code = generateRoomCode();
     rooms[code] = {
@@ -283,16 +247,15 @@ io.on('connection', (socket) => {
       players: {},
       settings: {
         rounds: 10,
-        difficulty: 'mixed',
-        roundTime: 20,
-        hintEnabled: true
+        roundTime: 30
       },
       state: 'lobby',
       currentRound: 0,
-      currentWord: null,
+      currentEmojis: '',
+      currentAnswers: [],
+      currentCategory: '',
       roundWinners: [],
-      hintRevealed: false,
-      usedWords: new Set(),
+      totalAttempts: 0,
       timer: null,
       remaining: 0,
       roundStartTime: 0,
@@ -305,7 +268,6 @@ io.on('connection', (socket) => {
     socket.emit('room-created', { roomCode: code });
   });
 
-  // Host: update settings
   socket.on('update-settings', (data) => {
     const code = socketToRoom[socket.id];
     const room = rooms[code];
@@ -314,27 +276,15 @@ io.on('connection', (socket) => {
     io.to(code).emit('settings-updated', room.settings);
   });
 
-  // Host: start round
-  socket.on('start-round', () => {
+  socket.on('start-round', ({ emojis, answers, category }) => {
     const code = socketToRoom[socket.id];
     const room = rooms[code];
     if (!room || room.hostSocket !== socket.id) return;
     if (room.state === 'lobby' || room.state === 'roundEnd') {
-      startRound(room);
+      startRound(room, { emojis, answers, category });
     }
   });
 
-  // Host: next round (alias)
-  socket.on('next-round', () => {
-    const code = socketToRoom[socket.id];
-    const room = rooms[code];
-    if (!room || room.hostSocket !== socket.id) return;
-    if (room.state === 'roundEnd') {
-      startRound(room);
-    }
-  });
-
-  // Host: reset game
   socket.on('reset-game', () => {
     const code = socketToRoom[socket.id];
     const room = rooms[code];
@@ -342,14 +292,15 @@ io.on('connection', (socket) => {
     if (room.timer) { clearInterval(room.timer); room.timer = null; }
     room.state = 'lobby';
     room.currentRound = 0;
-    room.currentWord = null;
+    room.currentEmojis = '';
+    room.currentAnswers = [];
+    room.currentCategory = '';
     room.roundWinners = [];
-    room.usedWords.clear();
+    room.totalAttempts = 0;
     Object.values(room.players).forEach(p => p.score = 0);
     io.to(code).emit('game-reset', { scores: getScoreboard(room) });
   });
 
-  // Host: connect twitch
   socket.on('connect-twitch', ({ channel }) => {
     const code = socketToRoom[socket.id];
     const room = rooms[code];
@@ -357,7 +308,6 @@ io.on('connection', (socket) => {
     connectTwitch(room, channel);
   });
 
-  // Host: disconnect twitch
   socket.on('disconnect-twitch', () => {
     const code = socketToRoom[socket.id];
     const room = rooms[code];
@@ -365,7 +315,6 @@ io.on('connection', (socket) => {
     disconnectTwitch(room);
   });
 
-  // Player: join room
   socket.on('join-room', ({ roomCode, playerName }) => {
     const room = rooms[roomCode];
     if (!room) {
@@ -399,7 +348,6 @@ io.on('connection', (socket) => {
     });
   });
 
-  // Player: submit guess
   socket.on('submit-guess', ({ guess }) => {
     const code = socketToRoom[socket.id];
     const room = rooms[code];
@@ -407,7 +355,6 @@ io.on('connection', (socket) => {
     processGuess(room, socket.id, guess);
   });
 
-  // Player: leave room
   socket.on('leave-room', () => {
     const code = socketToRoom[socket.id];
     const room = rooms[code];
@@ -425,7 +372,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Overlay: join
   socket.on('join-overlay', ({ roomCode }) => {
     const room = rooms[roomCode];
     if (!room) {
@@ -442,7 +388,6 @@ io.on('connection', (socket) => {
     });
   });
 
-  // Disconnect
   socket.on('disconnect', () => {
     const code = socketToRoom[socket.id];
     if (!code) return;

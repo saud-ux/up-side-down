@@ -23,11 +23,43 @@ function notify(msg, type = '') {
 
 const MEDALS = ['🥇','🥈','🥉'];
 const RANK_TEXT = ['الأول','الثاني','الثالث'];
+const CATEGORY_ICONS = {
+  'فيلم': '🎬', 'كرتون': '📺', 'مشروب': '☕', 'أكل': '🍽️',
+  'مكان': '📍', 'رياضة': '⚽', 'مناسبة': '🎉', 'نشاط': '🎯',
+  'موضوع': '💡', 'شخصية': '👤', 'حيوان': '🐾', 'أغنية': '🎵',
+  'فصل': '🌿', 'صحة': '🏥'
+};
 
 let playerName = '';
 let myScore = 0;
 let currentRound = 0, totalRounds = 0;
 let myRoundRank = 0;
+
+// ─── Emoji Helpers ───
+
+function splitEmojis(str) {
+  const trimmed = str.trim();
+  if (!trimmed) return [];
+  if (trimmed.includes(' ')) {
+    return trimmed.split(/\s+/).filter(Boolean);
+  }
+  if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+    const seg = new Intl.Segmenter('en', { granularity: 'grapheme' });
+    return [...seg.segment(trimmed)].map(s => s.segment).filter(s => s.trim());
+  }
+  return [trimmed];
+}
+
+function renderEmojiBoxes(container, emojis, cssClass) {
+  container.innerHTML = '';
+  const parts = splitEmojis(emojis);
+  parts.forEach(e => {
+    const box = document.createElement('span');
+    box.className = 'emoji-char' + (cssClass ? ' ' + cssClass : '');
+    box.textContent = e;
+    container.appendChild(box);
+  });
+}
 
 // ─── Auto-fill room code from URL ───
 
@@ -101,10 +133,17 @@ socket.on('round-started', (data) => {
   document.getElementById('p-timer').textContent = data.duration;
   document.getElementById('p-timer').className = 'timer';
 
-  document.getElementById('p-word').textContent = data.word;
+  renderEmojiBoxes(document.getElementById('p-emojis'), data.emojis);
 
-  document.getElementById('p-hint').textContent = '';
-  document.getElementById('p-hint').classList.remove('visible');
+  const catEl = document.getElementById('p-category');
+  if (data.category) {
+    const icon = CATEGORY_ICONS[data.category] || '🏷️';
+    catEl.textContent = icon + ' ' + data.category;
+    catEl.style.display = '';
+  } else {
+    catEl.style.display = 'none';
+  }
+
   document.getElementById('p-attempts').innerHTML = '';
   document.getElementById('p-winners').innerHTML = '';
 
@@ -121,13 +160,6 @@ socket.on('timer-tick', ({ remaining }) => {
   el.textContent = remaining;
   el.className = 'timer' + (remaining <= 5 ? ' danger' : remaining <= 10 ? ' warning' : '');
   if (remaining <= 5 && remaining > 0) SoundFX.tick();
-});
-
-socket.on('hint-revealed', ({ firstLetter }) => {
-  const hint = document.getElementById('p-hint');
-  hint.textContent = '💡 الحرف الأول: ' + firstLetter;
-  hint.classList.add('visible');
-  SoundFX.hint();
 });
 
 // ─── Guess ───
@@ -152,7 +184,7 @@ socket.on('wrong-guess', ({ guess }) => {
   const attempts = document.getElementById('p-attempts');
   const span = document.createElement('span');
   span.className = 'attempt wrong';
-  span.textContent = guess + ' ❌';
+  span.textContent = '"' + guess + '" ❌';
   attempts.appendChild(span);
 });
 
@@ -167,7 +199,7 @@ socket.on('correct-answer', ({ playerName: name, rank, points, timeElapsed }) =>
     const attempts = document.getElementById('p-attempts');
     const span = document.createElement('span');
     span.className = 'attempt correct';
-    span.textContent = MEDALS[rank - 1] + ' إجابة صحيحة!';
+    span.textContent = MEDALS[rank - 1] + ' إجابة صحيحة! +' + points;
     attempts.appendChild(span);
   }
 
@@ -184,13 +216,15 @@ socket.on('correct-answer', ({ playerName: name, rank, points, timeElapsed }) =>
 
 // ─── Round End ───
 
-socket.on('round-ended', ({ originalWord, winners, scores }) => {
+socket.on('round-ended', ({ emojis, answer, winners, scores }) => {
   SoundFX.roundEnd();
   showScreen('result');
 
   document.getElementById('r-round').textContent = currentRound;
   document.getElementById('r-total').textContent = totalRounds;
-  document.getElementById('r-word').textContent = originalWord;
+
+  renderEmojiBoxes(document.getElementById('r-emojis'), emojis);
+  document.getElementById('r-answer').textContent = '= ' + answer;
 
   const resultEl = document.getElementById('r-result');
   if (myRoundRank > 0) {

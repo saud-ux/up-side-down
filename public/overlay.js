@@ -1,10 +1,42 @@
 const socket = io();
 
 const MEDALS = ['🥇','🥈','🥉'];
+const CATEGORY_ICONS = {
+  'فيلم': '🎬', 'كرتون': '📺', 'مشروب': '☕', 'أكل': '🍽️',
+  'مكان': '📍', 'رياضة': '⚽', 'مناسبة': '🎉', 'نشاط': '🎯',
+  'موضوع': '💡', 'شخصية': '👤', 'حيوان': '🐾', 'أغنية': '🎵',
+  'فصل': '🌿', 'صحة': '🏥'
+};
 
-let totalDuration = 20;
+let totalDuration = 30;
 let roomCode = null;
 const CIRCUMFERENCE = 2 * Math.PI * 30;
+
+// ─── Emoji Helpers ───
+
+function splitEmojis(str) {
+  const trimmed = str.trim();
+  if (!trimmed) return [];
+  if (trimmed.includes(' ')) {
+    return trimmed.split(/\s+/).filter(Boolean);
+  }
+  if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+    const seg = new Intl.Segmenter('en', { granularity: 'grapheme' });
+    return [...seg.segment(trimmed)].map(s => s.segment).filter(s => s.trim());
+  }
+  return [trimmed];
+}
+
+function renderOverlayEmojis(container, emojis) {
+  container.innerHTML = '';
+  const parts = splitEmojis(emojis);
+  parts.forEach(e => {
+    const span = document.createElement('span');
+    span.className = 'ov-emoji-char';
+    span.textContent = e;
+    container.appendChild(span);
+  });
+}
 
 // ─── Auto-fill from URL ───
 
@@ -44,12 +76,19 @@ socket.on('round-started', (data) => {
   document.getElementById('ov-round').textContent =
     'الجولة ' + data.roundNumber + '/' + data.totalRounds;
 
-  const wordEl = document.getElementById('ov-word');
-  wordEl.textContent = data.word;
-  wordEl.className = 'overlay-word';
+  renderOverlayEmojis(document.getElementById('ov-emojis'), data.emojis);
 
-  document.getElementById('ov-hint').textContent = '';
-  document.getElementById('ov-hint').classList.remove('visible');
+  const catEl = document.getElementById('ov-category');
+  if (data.category) {
+    const icon = CATEGORY_ICONS[data.category] || '🏷️';
+    catEl.textContent = icon + ' ' + data.category;
+    catEl.style.display = '';
+  } else {
+    catEl.style.display = 'none';
+  }
+
+  document.getElementById('ov-answer').textContent = '';
+  document.getElementById('ov-answer').classList.remove('visible');
   document.getElementById('ov-winners').innerHTML = '';
 
   document.getElementById('ov-timer-text').textContent = data.duration;
@@ -86,15 +125,6 @@ function resetTimerRing() {
   circle.style.stroke = 'var(--accent)';
 }
 
-// ─── Hint ───
-
-socket.on('hint-revealed', ({ firstLetter }) => {
-  const hint = document.getElementById('ov-hint');
-  hint.textContent = '💡 الحرف الأول: ' + firstLetter;
-  hint.classList.add('visible');
-  SoundFX.hint();
-});
-
 // ─── Correct Answer ───
 
 socket.on('correct-answer', ({ playerName, rank, points, timeElapsed }) => {
@@ -108,12 +138,12 @@ socket.on('correct-answer', ({ playerName, rank, points, timeElapsed }) => {
 
 // ─── Round End ───
 
-socket.on('round-ended', ({ originalWord, scores }) => {
+socket.on('round-ended', ({ emojis, answer, scores }) => {
   SoundFX.roundEnd();
 
-  const wordEl = document.getElementById('ov-word');
-  wordEl.textContent = originalWord;
-  wordEl.classList.add('revealed');
+  const answerEl = document.getElementById('ov-answer');
+  answerEl.textContent = '= ' + answer;
+  answerEl.classList.add('visible');
 
   renderScores(scores);
 });
@@ -144,13 +174,12 @@ socket.on('game-over', ({ finalScores }) => {
 // ─── Reset / Close ───
 
 socket.on('game-reset', () => {
-  const wordEl = document.getElementById('ov-word');
-  wordEl.textContent = '';
-  wordEl.className = 'overlay-word';
+  document.getElementById('ov-emojis').innerHTML = '';
+  document.getElementById('ov-category').textContent = '';
   document.getElementById('ov-round').textContent = '';
   document.getElementById('ov-winners').innerHTML = '';
-  document.getElementById('ov-hint').textContent = '';
-  document.getElementById('ov-hint').classList.remove('visible');
+  document.getElementById('ov-answer').textContent = '';
+  document.getElementById('ov-answer').classList.remove('visible');
   document.getElementById('ov-timer-text').textContent = '';
   document.getElementById('ov-scores').innerHTML = '';
   const ovGo = document.getElementById('ov-gameover');

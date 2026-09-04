@@ -43,7 +43,7 @@ body {
 }
 
 .game-title {
-  font-size: 2rem;
+  font-size: 2.2rem;
   font-weight: 900;
   color: var(--orange);
   margin-bottom: 4px;
@@ -190,6 +190,12 @@ body {
   gap: 12px;
 }
 
+.form-hint {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  margin-top: 4px;
+}
+
 /* ─── Toggle ─── */
 
 .toggle-row {
@@ -260,56 +266,68 @@ body {
   font-size: 0.8rem;
 }
 
-.player-count {
-  color: var(--text-dim);
-  font-size: 0.85rem;
+/* ─── Emoji Display ─── */
+
+.emoji-display-container {
+  text-align: center;
+  padding: 24px 16px;
+  margin: 16px 0;
+}
+
+.emoji-display {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.emoji-char {
+  font-size: 3.5rem;
+  background: var(--bg-word);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  padding: 12px 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  animation: emojiPop 0.4s ease;
+}
+
+.emoji-display.emoji-large .emoji-char {
+  font-size: 4.5rem;
+  padding: 16px 20px;
+}
+
+.emoji-display.emoji-small .emoji-char {
+  font-size: 2.5rem;
+  padding: 8px 12px;
+}
+
+@keyframes emojiPop {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ─── Category Display ─── */
+
+.category-display {
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--gold);
   margin-bottom: 8px;
 }
 
-/* ─── Reversed Word Display ─── */
+/* ─── Answer Reveal ─── */
 
-.reversed-word-container {
-  text-align: center;
-  padding: 30px 20px;
-  margin: 20px 0;
-}
-
-.reversed-word {
-  direction: ltr;
-  unicode-bidi: bidi-override;
-  font-size: 3.5rem;
-  font-weight: 900;
-  color: var(--orange);
-  background: var(--bg-word);
-  display: inline-block;
-  padding: 20px 40px;
-  border-radius: 16px;
-  letter-spacing: 4px;
-  perspective: 600px;
-  transition: transform 0.6s;
-}
-
-.reversed-word.flip {
-  animation: flipWord 0.8s ease-in-out;
-}
-
-@keyframes flipWord {
-  0%   { transform: rotateY(0deg); }
-  50%  { transform: rotateY(90deg); }
-  100% { transform: rotateY(0deg); }
-}
-
-.revealed-word {
-  direction: rtl;
-  unicode-bidi: normal;
-  font-size: 3.5rem;
+.answer-reveal {
+  font-size: 2rem;
   font-weight: 900;
   color: var(--green);
-  display: inline-block;
-  padding: 20px 40px;
-  background: var(--bg-word);
-  border-radius: 16px;
-  letter-spacing: 4px;
+  margin-top: 16px;
   animation: revealPop 0.5s ease;
 }
 
@@ -317,6 +335,133 @@ body {
   0%   { transform: scale(0.5); opacity: 0; }
   60%  { transform: scale(1.1); }
   100% { transform: scale(1); opacity: 1; }
+}
+
+/* ─── Game Stats ─── */
+
+.game-stats {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin: 12px 0;
+  font-size: 1rem;
+  color: var(--text-dim);
+}
+
+.game-stats strong {
+  color: var(--text);
+}
+
+/* ─── Medals Display ─── */
+
+.medals-display {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin: 16px 0;
+  flex-wrap: wrap;
+}
+
+.medal-slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 10px;
+  font-weight: 700;
+  min-width: 140px;
+  transition: all 0.3s;
+}
+
+.medal-slot.won {
+  background: rgba(46,204,113,0.1);
+  border: 1px solid rgba(46,204,113,0.2);
+  animation: winnerSlide 0.4s ease;
+}
+
+.medal-icon {
+  font-size: 1.4rem;
+}
+
+.medal-name {
+  color: var(--text-dim);
+}
+
+.medal-slot.won .medal-name {
+  color: var(--text);
+}
+
+/* ─── Guesses Feed ─── */
+
+.guesses-feed {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.guess-item {
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 0.9rem;
+  animation: fadeSlideIn 0.3s ease;
+}
+
+.guess-item:last-child { border-bottom: none; }
+
+.guess-item.wrong {
+  color: var(--red);
+}
+
+.guess-name {
+  font-weight: 700;
+  color: var(--text);
+  margin-left: 6px;
+}
+
+.guess-text {
+  color: var(--text-dim);
+}
+
+/* ─── Suggestions ─── */
+
+.suggestions-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.suggestion-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  transition: background 0.2s;
+}
+
+.suggestion-row:last-child { border-bottom: none; }
+.suggestion-row:hover { background: rgba(255,255,255,0.03); }
+
+.suggestion-emojis {
+  font-size: 1.4rem;
+  min-width: 80px;
+}
+
+.suggestion-answer {
+  flex: 1;
+  font-weight: 600;
+}
+
+.suggestion-category {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  background: rgba(255,255,255,0.06);
+  padding: 3px 10px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+.suggestion-use-btn {
+  flex-shrink: 0;
 }
 
 /* ─── Round Info ─── */
@@ -349,26 +494,6 @@ body {
 @keyframes pulse {
   0%, 100% { transform: scale(1); }
   50%      { transform: scale(1.15); }
-}
-
-/* ─── Hint ─── */
-
-.hint {
-  text-align: center;
-  padding: 10px;
-  margin: 12px 0;
-  color: var(--gold);
-  font-size: 1.1rem;
-  font-weight: 700;
-  animation: fadeSlideIn 0.4s ease;
-  display: none;
-}
-
-.hint.visible { display: block; }
-
-@keyframes fadeSlideIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ─── Winners ─── */
@@ -632,22 +757,47 @@ body.overlay-page {
   border-radius: 20px;
 }
 
-.overlay-word {
-  direction: ltr;
-  unicode-bidi: bidi-override;
-  font-size: 5rem;
-  font-weight: 900;
-  color: var(--orange);
-  text-shadow: 0 4px 20px rgba(230,126,34,0.4);
-  transition: all 0.5s;
+.overlay-category {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--gold);
+  margin-bottom: 16px;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
 }
 
-.overlay-word.revealed {
-  direction: rtl;
-  unicode-bidi: normal;
+.overlay-emojis {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.ov-emoji-char {
+  font-size: 5rem;
+  background: rgba(44,62,80,0.7);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 20px;
+  padding: 16px 24px;
+  line-height: 1;
+  animation: emojiPop 0.4s ease;
+  text-shadow: 0 4px 20px rgba(230,126,34,0.3);
+}
+
+.overlay-answer {
+  font-size: 2.5rem;
+  font-weight: 900;
   color: var(--green);
+  margin-top: 24px;
   text-shadow: 0 4px 20px rgba(46,204,113,0.4);
-  animation: revealPop 0.5s ease;
+  opacity: 0;
+  transition: opacity 0.5s, transform 0.5s;
+  transform: translateY(10px);
+}
+
+.overlay-answer.visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .overlay-timer-ring {
@@ -686,17 +836,6 @@ body.overlay-page {
   font-weight: 900;
   direction: ltr;
 }
-
-.overlay-hint {
-  margin-top: 20px;
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: var(--gold);
-  opacity: 0;
-  transition: opacity 0.4s;
-}
-
-.overlay-hint.visible { opacity: 1; }
 
 .overlay-winners {
   position: absolute;
@@ -747,8 +886,9 @@ body.overlay-page {
 
 /* ─── Transitions ─── */
 
-.fade-in {
-  animation: fadeIn 0.3s ease;
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes fadeIn {
@@ -760,13 +900,20 @@ body.overlay-page {
 
 @media (max-width: 600px) {
   .container { padding: 12px; }
-  .game-title { font-size: 1.5rem; }
-  .reversed-word { font-size: 2.5rem; padding: 16px 24px; }
-  .revealed-word { font-size: 2.5rem; padding: 16px 24px; }
+  .game-title { font-size: 1.6rem; }
+  .emoji-char { font-size: 2.5rem; padding: 8px 12px; }
+  .emoji-display.emoji-large .emoji-char { font-size: 3.5rem; padding: 12px 16px; }
+  .emoji-display.emoji-small .emoji-char { font-size: 2rem; padding: 6px 10px; }
+  .answer-reveal { font-size: 1.5rem; }
   .room-code { font-size: 2.2rem; letter-spacing: 8px; }
   .form-row { grid-template-columns: 1fr; }
   .podium-item { min-width: 80px; padding: 12px; }
-  .overlay-word { font-size: 3.5rem; }
+  .medals-display { flex-direction: column; align-items: center; }
+  .medal-slot { min-width: auto; width: 100%; justify-content: center; }
+  .suggestion-row { flex-wrap: wrap; }
+  .suggestion-emojis { min-width: auto; }
+  .ov-emoji-char { font-size: 3.5rem; padding: 12px 16px; }
+  .game-stats { flex-direction: column; gap: 4px; align-items: center; }
 }
 
 /* ─── Waiting/Connecting ─── */

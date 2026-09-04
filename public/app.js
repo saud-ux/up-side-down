@@ -1,9 +1,58 @@
 const socket = io();
 
+// ─── Suggestions Bank ───
+
+const SUGGESTIONS = [
+  { emojis: '🦁👑🌍', answer: 'الأسد الملك, أسد الملك, lion king, the lion king', category: 'فيلم' },
+  { emojis: '🧊❄️👸', answer: 'فروزن, frozen', category: 'فيلم' },
+  { emojis: '🕷️🕸️🦸', answer: 'سبايدر مان, spider man, spiderman', category: 'فيلم' },
+  { emojis: '🧞‍♂️🏜️✨', answer: 'علاء الدين, aladdin', category: 'فيلم' },
+  { emojis: '🐟🌊👨‍👦', answer: 'نيمو, finding nemo, البحث عن نيمو', category: 'فيلم' },
+  { emojis: '🦇🌙🏙️', answer: 'باتمان, batman', category: 'فيلم' },
+  { emojis: '👸🐸💋', answer: 'الأميرة والضفدع, princess and the frog', category: 'فيلم' },
+  { emojis: '🚗⚡🏁', answer: 'سيارات, كارز, cars', category: 'فيلم' },
+  { emojis: '🤖🌍🌱', answer: 'وول إي, wall-e, والي', category: 'فيلم' },
+  { emojis: '👻👀🏚️', answer: 'بيت أشباح, haunted house', category: 'فيلم' },
+  { emojis: '🐭🧀🐱', answer: 'توم وجيري, tom and jerry', category: 'كرتون' },
+  { emojis: '🧽🌊🍍', answer: 'سبونج بوب, spongebob', category: 'كرتون' },
+  { emojis: '☕🍵🫖', answer: 'شاي, tea', category: 'مشروب' },
+  { emojis: '🍕🧀🔥', answer: 'بيتزا, pizza', category: 'أكل' },
+  { emojis: '🍔🥩🍞', answer: 'برجر, burger, hamburger', category: 'أكل' },
+  { emojis: '🍚🍛🥘', answer: 'كبسة, kabsa', category: 'أكل' },
+  { emojis: '🧇🍯🥞', answer: 'وافل, waffle', category: 'أكل' },
+  { emojis: '🍦🥛🍫', answer: 'آيسكريم, ايسكريم, ice cream', category: 'أكل' },
+  { emojis: '🏜️🐪☀️', answer: 'صحراء, desert', category: 'مكان' },
+  { emojis: '🎓📚🏫', answer: 'مدرسة, school', category: 'مكان' },
+  { emojis: '⚽🏟️🏆', answer: 'كرة قدم, كورة, football, soccer', category: 'رياضة' },
+  { emojis: '🌙⭐🕌', answer: 'رمضان, ramadan', category: 'مناسبة' },
+  { emojis: '✈️🧳🌍', answer: 'سفر, travel', category: 'نشاط' },
+  { emojis: '🎮🕹️👾', answer: 'ألعاب فيديو, قيمز, gaming, video games', category: 'نشاط' },
+  { emojis: '📱💻🌐', answer: 'تكنولوجيا, تقنية, technology', category: 'موضوع' },
+  { emojis: '🏖️🌊☀️', answer: 'بحر, شاطئ, beach', category: 'مكان' },
+  { emojis: '🎂🎁🎉', answer: 'عيد ميلاد, birthday', category: 'مناسبة' },
+  { emojis: '👨‍🍳🍳🔪', answer: 'طبخ, شيف, cooking, chef', category: 'نشاط' },
+  { emojis: '🏋️💪🏃', answer: 'رياضة, جيم, gym, sport', category: 'نشاط' },
+  { emojis: '🌺🌸🦋', answer: 'ربيع, spring', category: 'فصل' },
+  { emojis: '🎸🎤🎵', answer: 'موسيقى, حفلة, music', category: 'نشاط' },
+  { emojis: '🦷🪥😁', answer: 'أسنان, طبيب أسنان, dentist', category: 'صحة' },
+  { emojis: '🎪🤡🎈', answer: 'سيرك, circus', category: 'مكان' },
+  { emojis: '🏥💉👨‍⚕️', answer: 'مستشفى, hospital', category: 'مكان' },
+  { emojis: '📸🖼️🎨', answer: 'تصوير, فن, photography, art', category: 'نشاط' },
+  { emojis: '🥐🧈☕', answer: 'كرواسون, croissant, فطور', category: 'أكل' },
+];
+
+const CATEGORY_ICONS = {
+  'فيلم': '🎬', 'كرتون': '📺', 'مشروب': '☕', 'أكل': '🍽️',
+  'مكان': '📍', 'رياضة': '⚽', 'مناسبة': '🎉', 'نشاط': '🎯',
+  'موضوع': '💡', 'شخصية': '👤', 'حيوان': '🐾', 'أغنية': '🎵',
+  'فصل': '🌿', 'صحة': '🏥'
+};
+
 // ─── DOM refs ───
 
 const screens = {
   lobby:    document.getElementById('lobby-screen'),
+  setup:    document.getElementById('setup-screen'),
   game:     document.getElementById('game-screen'),
   roundEnd: document.getElementById('round-end-screen'),
   gameOver: document.getElementById('gameover-screen')
@@ -23,9 +72,39 @@ function notify(msg, type = '') {
 
 const MEDALS = ['🥇','🥈','🥉'];
 
+// ─── Emoji Helpers ───
+
+function splitEmojis(str) {
+  const trimmed = str.trim();
+  if (!trimmed) return [];
+  if (trimmed.includes(' ')) {
+    return trimmed.split(/\s+/).filter(Boolean);
+  }
+  if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+    const seg = new Intl.Segmenter('en', { granularity: 'grapheme' });
+    return [...seg.segment(trimmed)].map(s => s.segment).filter(s => s.trim());
+  }
+  return [trimmed];
+}
+
+function renderEmojiBoxes(container, emojis, cssClass) {
+  container.innerHTML = '';
+  const parts = splitEmojis(emojis);
+  parts.forEach(e => {
+    const box = document.createElement('span');
+    box.className = 'emoji-char' + (cssClass ? ' ' + cssClass : '');
+    box.textContent = e;
+    container.appendChild(box);
+  });
+}
+
 // ─── Lobby ───
 
 let roomCode = null;
+let currentRound = 0, totalRounds = 0, duration = 0;
+let totalAttempts = 0, correctCount = 0;
+let usedSuggestions = new Set();
+let suggestionsVisible = 10;
 
 document.getElementById('create-room-btn').addEventListener('click', () => {
   socket.emit('create-room');
@@ -51,17 +130,14 @@ document.getElementById('copy-link-btn').addEventListener('click', () => {
 });
 
 // Settings
-['setting-rounds','setting-difficulty','setting-time'].forEach(id => {
+['setting-rounds','setting-time'].forEach(id => {
   document.getElementById(id).addEventListener('change', sendSettings);
 });
-document.getElementById('setting-hint').addEventListener('change', sendSettings);
 
 function sendSettings() {
   socket.emit('update-settings', {
-    rounds:      parseInt(document.getElementById('setting-rounds').value),
-    difficulty:  document.getElementById('setting-difficulty').value,
-    roundTime:   parseInt(document.getElementById('setting-time').value),
-    hintEnabled: document.getElementById('setting-hint').checked
+    rounds:    parseInt(document.getElementById('setting-rounds').value),
+    roundTime: parseInt(document.getElementById('setting-time').value)
   });
 }
 
@@ -122,20 +198,96 @@ function removePlayerChip(name) {
   if (chip) chip.remove();
 }
 
-// Start game
+// Start game → go to round setup
 document.getElementById('start-game-btn').addEventListener('click', () => {
   sendSettings();
-  socket.emit('start-round');
+  totalRounds = parseInt(document.getElementById('setting-rounds').value);
+  currentRound = 0;
+  usedSuggestions.clear();
+  goToSetup();
+});
+
+// ─── Round Setup ───
+
+function goToSetup() {
+  showScreen('setup');
+  document.getElementById('s-round').textContent = currentRound + 1;
+  document.getElementById('s-total').textContent = totalRounds;
+  document.getElementById('setup-emojis').value = '';
+  document.getElementById('setup-answer').value = '';
+  document.getElementById('setup-category').value = '';
+  suggestionsVisible = 10;
+  renderSuggestions();
+  document.getElementById('setup-emojis').focus();
+}
+
+function renderSuggestions() {
+  const list = document.getElementById('suggestions-list');
+  list.innerHTML = '';
+  const available = SUGGESTIONS.filter((_, i) => !usedSuggestions.has(i));
+  const toShow = available.slice(0, suggestionsVisible);
+
+  toShow.forEach(s => {
+    const idx = SUGGESTIONS.indexOf(s);
+    const row = document.createElement('div');
+    row.className = 'suggestion-row';
+    const icon = CATEGORY_ICONS[s.category] || '🏷️';
+    row.innerHTML = `
+      <span class="suggestion-emojis">${s.emojis}</span>
+      <span class="suggestion-answer">${s.answer.split(',')[0].trim()}</span>
+      <span class="suggestion-category">${icon} ${s.category}</span>
+      <button class="btn btn-secondary btn-small suggestion-use-btn" data-idx="${idx}">استخدم</button>
+    `;
+    list.appendChild(row);
+  });
+
+  const moreBtn = document.getElementById('show-more-btn');
+  moreBtn.style.display = available.length > suggestionsVisible ? '' : 'none';
+}
+
+document.getElementById('suggestions-list').addEventListener('click', (e) => {
+  const btn = e.target.closest('.suggestion-use-btn');
+  if (!btn) return;
+  const idx = parseInt(btn.dataset.idx);
+  const s = SUGGESTIONS[idx];
+  document.getElementById('setup-emojis').value = s.emojis;
+  document.getElementById('setup-answer').value = s.answer;
+  document.getElementById('setup-category').value = s.category;
+  usedSuggestions.add(idx);
+  renderSuggestions();
+});
+
+document.getElementById('show-more-btn').addEventListener('click', () => {
+  suggestionsVisible += 10;
+  renderSuggestions();
+});
+
+document.getElementById('start-round-btn').addEventListener('click', () => {
+  const emojis = document.getElementById('setup-emojis').value.trim();
+  const answerStr = document.getElementById('setup-answer').value.trim();
+  const category = document.getElementById('setup-category').value.trim();
+
+  if (!emojis) {
+    notify('أدخل الإيموجيات', 'error');
+    return;
+  }
+  if (!answerStr) {
+    notify('أدخل الجواب الصحيح', 'error');
+    return;
+  }
+
+  const answers = answerStr.split(',').map(a => a.trim()).filter(Boolean);
+  socket.emit('start-round', { emojis, answers, category });
 });
 
 // ─── Game ───
-
-let currentRound = 0, totalRounds = 0, duration = 0;
 
 socket.on('round-started', (data) => {
   currentRound = data.roundNumber;
   totalRounds = data.totalRounds;
   duration = data.duration;
+  totalAttempts = 0;
+  correctCount = 0;
 
   showScreen('game');
 
@@ -144,12 +296,27 @@ socket.on('round-started', (data) => {
   document.getElementById('g-timer').textContent = data.duration;
   document.getElementById('g-timer').className = 'timer';
 
-  document.getElementById('g-word-display').textContent = data.word;
-  document.getElementById('g-word-display').className = 'reversed-word';
+  renderEmojiBoxes(document.getElementById('g-emojis'), data.emojis);
 
-  document.getElementById('g-hint').textContent = '';
-  document.getElementById('g-hint').classList.remove('visible');
-  document.getElementById('g-winners').innerHTML = '';
+  const catEl = document.getElementById('g-category');
+  if (data.category) {
+    const icon = CATEGORY_ICONS[data.category] || '🏷️';
+    catEl.textContent = icon + ' ' + data.category;
+    catEl.style.display = '';
+  } else {
+    catEl.style.display = 'none';
+  }
+
+  document.getElementById('g-attempts').textContent = '0';
+  document.getElementById('g-correct').textContent = '0';
+
+  document.getElementById('medal-1').querySelector('.medal-name').textContent = '—';
+  document.getElementById('medal-2').querySelector('.medal-name').textContent = '—';
+  document.getElementById('medal-3').querySelector('.medal-name').textContent = '—';
+  document.querySelectorAll('.medal-slot').forEach(s => s.classList.remove('won'));
+
+  document.getElementById('g-guesses').innerHTML = '';
+  document.getElementById('g-no-guesses').style.display = '';
 });
 
 socket.on('timer-tick', ({ remaining }) => {
@@ -161,50 +328,62 @@ socket.on('timer-tick', ({ remaining }) => {
   }
 });
 
-socket.on('hint-revealed', ({ firstLetter }) => {
-  const hint = document.getElementById('g-hint');
-  hint.textContent = '💡 الحرف الأول: ' + firstLetter;
-  hint.classList.add('visible');
-  SoundFX.hint();
+socket.on('guess-attempt', ({ playerName, guess }) => {
+  totalAttempts++;
+  document.getElementById('g-attempts').textContent = totalAttempts;
+  document.getElementById('g-no-guesses').style.display = 'none';
+
+  const feed = document.getElementById('g-guesses');
+  const item = document.createElement('div');
+  item.className = 'guess-item wrong';
+  item.innerHTML = `<span class="guess-name">${playerName}:</span> <span class="guess-text">"${guess}"</span> ❌`;
+  feed.prepend(item);
+
+  if (feed.children.length > 8) feed.lastChild.remove();
 });
 
 socket.on('correct-answer', ({ playerName, rank, points, timeElapsed }) => {
   SoundFX.correct();
-  const winners = document.getElementById('g-winners');
-  const item = document.createElement('div');
-  item.className = 'winner-item';
-  item.innerHTML = `
-    <span class="medal">${MEDALS[rank - 1]}</span>
-    <span class="name">${playerName}</span>
-    <span class="points">+${points}</span>
-    <span class="time">${timeElapsed} ث</span>
-  `;
-  winners.appendChild(item);
+  totalAttempts++;
+  correctCount++;
+  document.getElementById('g-attempts').textContent = totalAttempts;
+  document.getElementById('g-correct').textContent = correctCount;
+
+  const slot = document.getElementById('medal-' + rank);
+  slot.querySelector('.medal-name').textContent = playerName + ' (+' + points + ')';
+  slot.classList.add('won');
 });
 
 // ─── Round End ───
 
-socket.on('round-ended', ({ originalWord, winners, scores }) => {
+socket.on('round-ended', ({ emojis, answer, winners, scores }) => {
   SoundFX.roundEnd();
   showScreen('roundEnd');
 
   document.getElementById('re-round').textContent = currentRound;
   document.getElementById('re-total').textContent = totalRounds;
-  document.getElementById('re-word').textContent = originalWord;
+
+  renderEmojiBoxes(document.getElementById('re-emojis'), emojis);
+  document.getElementById('re-answer').textContent = '= ' + answer;
 
   const winnersEl = document.getElementById('re-winners');
   winnersEl.innerHTML = '';
-  winners.forEach(w => {
+  for (let i = 0; i < 3; i++) {
+    const w = winners[i];
     const item = document.createElement('div');
     item.className = 'winner-item';
-    item.innerHTML = `
-      <span class="medal">${MEDALS[w.rank - 1]}</span>
-      <span class="name">${w.playerName}</span>
-      <span class="points">+${w.points}</span>
-      <span class="time">${w.timeElapsed} ث</span>
-    `;
+    if (w) {
+      item.innerHTML = `
+        <span class="medal">${MEDALS[i]}</span>
+        <span class="name">${w.playerName}</span>
+        <span class="points">+${w.points}</span>
+        <span class="time">${w.timeElapsed} ث</span>
+      `;
+    } else {
+      item.innerHTML = `<span class="medal">${MEDALS[i]}</span> <span class="name" style="color:var(--text-dim)">لا أحد</span>`;
+    }
     winnersEl.appendChild(item);
-  });
+  }
 
   renderScoreboard('re-scoreboard', scores);
 
@@ -212,7 +391,7 @@ socket.on('round-ended', ({ originalWord, winners, scores }) => {
 });
 
 document.getElementById('next-round-btn').addEventListener('click', () => {
-  socket.emit('next-round');
+  goToSetup();
 });
 
 // ─── Game Over ───
@@ -246,6 +425,7 @@ socket.on('game-reset', () => {
   document.getElementById('players-grid').innerHTML = '';
   document.getElementById('player-count').textContent = '0';
   document.getElementById('no-players').style.display = '';
+  usedSuggestions.clear();
 });
 
 // ─── Room closed ───
